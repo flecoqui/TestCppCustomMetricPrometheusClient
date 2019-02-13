@@ -161,13 +161,19 @@ The yaml file used to deploy the solution on AKS:
 
 ### Checking if the pod is deployed with kubectl
 
-kubectl get pods -n monitoring
+Use the following command:
+
+        kubectl get pods -n monitoring
 
 ### Checking if the Custom Metric is visible with kubectl
 
-kubectl port-forward -n monitoring prometheus-prometheus-operator-prometheus-0 9090
+Use the following command:
+
+    kubectl port-forward -n monitoring prometheus-prometheus-operator-prometheus-0 9090
 
 ### Checking the counter values with kubectl
 
-kubectl exec pcrgauge-c58fdc84b-p49b4 -n monitoring -- curl http://127.0.0.1:8080/metrics
+Use the following command:
+
+    kubectl exec pcrgauge-c58fdc84b-p49b4 -n monitoring -- curl http://127.0.0.1:8080/metrics
 
