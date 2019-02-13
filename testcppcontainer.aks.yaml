@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: testcppcontainer
+  labels:
+    app: testcppcontainer
+spec:
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+  selector:
+    app: testcppcontainer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: testcppcontainer
+  labels:
+    app: testcppcontainer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: testcppcontainer
+  template:
+    metadata:
+      labels:
+        app: testcppcontainer
+    spec:
+      containers:
+      - name: testcppcontainer
+        image: testacreu2.azurecr.io/testcppcontainer:v2
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 8080
+            name: http        
+        env:
+          - name: LISTENING_PORT
+            value: "8080"
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: testcppcontainer
+  labels:
+    app: testcppcontainer
+spec:
+  selector:
+    matchLabels:
+      app: testcppcontainer
+  endpoints:
+  - port: http
