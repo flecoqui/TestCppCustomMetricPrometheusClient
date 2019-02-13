@@ -11,12 +11,14 @@ PCRGauge --prometheusport <local TCP port used to receive Prometheus request>
         [--verbose] 
 
 
-## Building the container image
+## Building the container image with Azure CLI
 
 az acr build --registry "ACRName"   --image pcrgauge:v1 .
 
 
-     The image is built using the DockerFile below:
+The image is built using the DockerFile below:
+
+
 
             # Get the GCC preinstalled image from Docker Hub
             FROM gcc:8
@@ -75,12 +77,13 @@ az acr build --registry "ACRName"   --image pcrgauge:v1 .
             CMD ["./PCRGauge"]
 
 
-## Deploying the container image
+## Deploying the container image  with Kubectl
 
 kubectl apply -f pcrgauge.aks.yaml -n monitoring
 
 
-     The yaml file used to deploy the solution on AKS:
+The yaml file used to deploy the solution on AKS:
+
 
             apiVersion: v1
             kind: Service
@@ -145,15 +148,15 @@ kubectl apply -f pcrgauge.aks.yaml -n monitoring
 
 ## Checking the deployment of the  container image
 
-### Checking if the pod is deployed 
+### Checking if the pod is deployed with kubectl
 
 kubectl get pods -n monitoring
 
-### Checking if the Custom Metric is visible  
+### Checking if the Custom Metric is visible with kubectl
 
 kubectl port-forward -n monitoring prometheus-prometheus-operator-prometheus-0 9090
 
-### Checking the counter values   
+### Checking the counter values with kubectl
 
 kubectl exec pcrgauge-c58fdc84b-p49b4 -n monitoring -- curl http://127.0.0.1:8080/metrics
 
