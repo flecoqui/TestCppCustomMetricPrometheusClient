@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pcrgauge
+  labels:
+    app: pcrgauge
+spec:
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+  - name: ts
+    protocol: UDP
+    port: 1234
+    targetPort: 1234
+  selector:
+    app: pcrgauge
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pcrgauge
+  labels:
+    app: pcrgauge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pcrgauge
+  template:
+    metadata:
+      labels:
+        app: pcrgauge
+    spec:
+      containers:
+      - name: pcrgauge
+        image: testacreu2.azurecr.io/pcrgauge:v1
+        command: ["./PCRGauge","--prometheusport", "8080", "--tsport", "127.0.0.1:1234" ]
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 8080
+            name: http       
+          - containerPort: 1234
+            name: ts                 
+        env:
+          - name: LISTENING_PORT
+            value: "8080"
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pcrgauge
+  labels:
+    app: pcrgauge
+spec:
+  selector:
+    matchLabels:
+      app: pcrgauge
+  endpoints:
+  - port: http
