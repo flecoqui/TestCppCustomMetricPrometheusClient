@@ -1,4 +1,4 @@
-# PCR Gauge Custom Prometheus Metric 
+# Custom Prometheus Metric PCR Gauge
 This sample application implements a sample PCR Gauge based on a Custom Prometheus Metric running in Container in Azure Kubernetes Service.
 
 
