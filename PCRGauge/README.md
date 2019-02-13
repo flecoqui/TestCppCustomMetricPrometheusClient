@@ -4,11 +4,22 @@ This sample application implements a sample PCR Gauge based on a Custom Promethe
 
 ## Using the Application
 
-PCR Gauge Custom Prometheus Client 
+PCR Gauge Custom Prometheus Client:
 Syntax:
 PCRGauge --prometheusport <local TCP port used to receive Prometheus request>
          --tsport <local UDP port used to receive the TS stream>
         [--verbose] 
+
+
+For instance:
+Launch PCRGauge to receive the http request on port 8080 and receiving the TS Stream on multicast 239.0.0.1:1234:
+
+        PCRGauge --prometheusport 8080 --tsport 239.0.0.1:1234 
+
+Launch PCRGauge to receive the http request on port 8080 and receiving the TS Stream on unicast 127.0.0.1:1234
+
+        PCRGauge --prometheusport 8080 --tsport 127.0.0.1:1234 
+
 
 
 ## Building the container image with Azure CLI
