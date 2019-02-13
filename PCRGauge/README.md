@@ -12,11 +12,11 @@ PCRGauge --prometheusport <local TCP port used to receive Prometheus request>
 
 
 For instance:
-Launch PCRGauge to receive the http request on port 8080 and receiving the TS Stream on multicast 239.0.0.1:1234:
+Launch PCRGauge to receive the http request on port 8080 and receiving the TS Stream on multicast address 239.0.0.1 and UDP port 1234:
 
         PCRGauge --prometheusport 8080 --tsport 239.0.0.1:1234 
 
-Launch PCRGauge to receive the http request on port 8080 and receiving the TS Stream on unicast 127.0.0.1:1234
+Launch PCRGauge to receive the http request on port 8080 and receiving the TS Stream on unicast address 127.0.0.1 and UDP port 1234
 
         PCRGauge --prometheusport 8080 --tsport 127.0.0.1:1234 
 
