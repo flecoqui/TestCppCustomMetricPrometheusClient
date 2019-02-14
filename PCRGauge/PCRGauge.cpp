@@ -1,5 +1,3 @@
-
-
 #include <chrono>
 #include <map>
 #include <memory>
@@ -260,8 +258,213 @@ void TimeThread(prometheus::Counter& counter)
     counter.Increment();
   }
 }
+std::string nowstring(long t)
+{
+  long localt =  t/1000000000;
+  std::time_t now= std::time(&localt);
+  std::tm* now_tm= std::gmtime(&now);
+  char buf[42];
+  std::strftime(buf, 42, "%F %X", now_tm);
+  return buf;
+}
+long now() {
+    struct timespec ts;
+    timespec_get(&ts, TIME_UTC);
+    return (long)ts.tv_sec * 1000000000L + ts.tv_nsec;
+}
+int GetPCRInAdaptationField(LPBYTE Packet, uint64_t* lpPCR)
+{
+	if((Packet[0]==0x47)&& ((Packet[1]&0x80)==0))
+	{
+		if( ((Packet[3]&0x20)!=0) && (Packet[4]!=0))
+		 {
+			 if(Packet[5]&0x10)
+			 {
+				uint64_t pcr_base = (((Packet[6] << 24) | (Packet[7] << 16) | (Packet[8] << 8) | (Packet[9])) & 0xFFFFFFFF);
+				pcr_base = pcr_base << 1;
 
-void TSThread(prometheus::Gauge& gauge, std::string LocalTSAddress, WORD LocalTSPort, bool verbose )
+				if((Packet[10] & 0x80)== 0x80)
+					pcr_base = (pcr_base) | 0x000000001;
+				else
+					pcr_base = (pcr_base) & 0xFFFFFFFFE;
+
+				uint64_t pcr_ext =  ( ((Packet[10] & 0x01) == 0x01)? 0x100 : 0x00);
+				pcr_ext = pcr_ext | Packet[11];
+
+				*lpPCR = pcr_base*300 + pcr_ext;
+				return 1;
+			 }
+		 }
+	}
+	return 0;
+}
+int GetOPCRInAdaptationField(LPBYTE Packet, uint64_t* lpOPCR)
+{
+	if((Packet[0]==0x47)&& ((Packet[1]&0x80)==0))
+	{
+		if( ((Packet[3]&0x20)!=0) && (Packet[4]!=0))
+		 {
+			 if(Packet[5]&0x08)
+			 {
+				int Offset = 2;
+				if(Packet[5]&0x10)
+					Offset += 6;
+
+				uint64_t t = (((Packet[4+Offset] << 24) | (Packet[5+Offset] << 16) | (Packet[6+Offset] << 8) | (Packet[7+Offset])) & 0xFFFFFFFF);
+				t = t << 1;
+
+				*lpOPCR = (t) | ((Packet[8+Offset] & 0x80) >> 7);
+				return 1;
+			 }
+		 }
+	}
+	return 0;
+
+}
+int GetDTSInAdaptationField(LPBYTE Packet, uint64_t* lpDTS)
+{
+	if((Packet[0]==0x47)&& ((Packet[1]&0x80)==0))
+	{
+		if( ((Packet[3]&0x20)!=0) && (Packet[4]!=0))
+		 {
+			 if(Packet[5]&0x01)
+			 {
+				 int Offset = 2;
+				 if(Packet[5]&0x10)
+					 Offset += 6;
+				 if(Packet[5]&0x08)
+					 Offset += 6;
+				 if(Packet[5]&0x04)
+					 Offset += 1;
+				 if(Packet[5]&0x02)
+					 Offset += 2;
+				 if(Packet[5]&0x01)
+				 {
+					 Offset += 2;
+					 if(Packet[4 + Offset - 1] & 0x80)
+						 Offset += 2;
+					 if(Packet[4 + Offset - 1] & 0x40)
+						 Offset += 3;
+					 if(Packet[4 + Offset - 1] & 0x20)
+					 {
+//						 uint64_t t = ((Packet[4 + Offset]& 0x0E) << 29)&     0x00000001C0000000;
+						 uint64_t t = Packet[4 + Offset]& 0x0E;
+						 t = (t << 29)&     0x00000001C0000000;
+						 t |=        ((Packet[4 + Offset + 1]& 0xFF) << 22)& 0x000000003FC00000;
+						 t |=        ((Packet[4 + Offset + 2]& 0xFE) << 14)& 0x00000000003F8000;
+						 t |=        ((Packet[4 + Offset + 3]& 0xFF) << 7) & 0x0000000000007F80;
+						 t |=        ((Packet[4 + Offset + 4]& 0xFE) >> 1) & 0x000000000000007F;
+						*lpDTS = t;
+						 return 1;
+					 }
+				 }
+
+			 }
+		 }
+	}
+	return 0;
+}
+int GetDTSInPES(LPBYTE Packet, uint64_t* lpDTS)
+{
+	int Offset = 4;
+	if((Packet[0]==0x47)&& ((Packet[1]&0x80)==0))
+	{
+		if((Packet[3]&0x20)!=0)
+			Offset += (Packet[4]+1);
+		if((Packet[3]&0x10)!=0)
+		{
+			if( (Packet[Offset]==0x00) &&
+				(Packet[Offset+1]==0x00) &&
+				(Packet[Offset+2]==0x01))
+			{
+				if( (Packet[Offset+3]!=0xBC) && //program stream map
+					(Packet[Offset+3]!=0xBE) && // padding stream
+					(Packet[Offset+3]!=0xBF) && // private stream
+					(Packet[Offset+3]!=0xF0) && // ECM
+					(Packet[Offset+3]!=0xF1) && // EMM
+					(Packet[Offset+3]!=0xFF) && // program stream directroy
+					(Packet[Offset+3]!=0xF2) && // DSMCC stream
+					(Packet[Offset+3]!=0xF8))   // Type E stream
+				{
+					if((Packet[Offset+7]& 0xC0) == 0xC0)
+					{
+						//Packet[Offset+9] // PTS
+						//Packet[Offset+14] // PTS
+//						 uint64_t t = ((Packet[14 + Offset]& 0x0E) << 29)&     0x00000001C0000000;
+						 uint64_t t = Packet[14 + Offset]& 0x0E;
+						 t = (t << 29)&     0x00000001C0000000;
+						 t |=        ((Packet[14 + Offset + 1]& 0xFF) << 22)& 0x000000003FC00000;
+						 t |=        ((Packet[14 + Offset + 2]& 0xFE) << 14)& 0x00000000003F8000;
+						 t |=        ((Packet[14 + Offset + 3]& 0xFF) << 7) & 0x0000000000007F80;
+						 t |=        ((Packet[14 + Offset + 4]& 0xFE) >> 1) & 0x000000000000007F;
+						*lpDTS = t;
+						return 1;
+					}
+				}
+			}
+		}
+	}
+	return 0;
+}
+int GetPTSInPES(LPBYTE Packet, uint64_t* lpPTS)
+{
+	int Offset = 4;
+	if((Packet[0]==0x47)&& ((Packet[1]&0x80)==0))
+	{
+		if((Packet[3]&0x20)!=0)
+			Offset += (Packet[4]+1);
+		if((Packet[3]&0x10)!=0)
+		{
+			if( (Packet[Offset]==0x00)&&
+				(Packet[Offset+1]==0x00)&&
+				(Packet[Offset+2]==0x01))
+			{
+				if( (Packet[Offset+3]!=0xBC) && //program stream map
+					(Packet[Offset+3]!=0xBE) && // padding stream
+					(Packet[Offset+3]!=0xBF) && // private stream
+					(Packet[Offset+3]!=0xF0) && // ECM
+					(Packet[Offset+3]!=0xF1) && // EMM
+					(Packet[Offset+3]!=0xFF) && // program stream directroy
+					(Packet[Offset+3]!=0xF2) && // DSMCC stream
+					(Packet[Offset+3]!=0xF8))   // Type E stream
+				{
+					if((Packet[Offset+7]& 0x80) == 0x80)
+					{
+						//Packet[Offset+9] // PTS
+						
+//						 uint64_t t = ((Packet[9 + Offset]& 0x0E) << 29)&     0x00000001C0000000;
+						 uint64_t t = (Packet[9 + Offset]& 0x0E);
+						 t = (t << 29)&     0x00000001C0000000;
+						 t |=        ((Packet[9 + Offset + 1]& 0xFF) << 22)& 0x000000003FC00000;
+						 t |=        ((Packet[9 + Offset + 2]& 0xFE) << 14)& 0x00000000003F8000;
+						 t |=        ((Packet[9 + Offset + 3]& 0xFF) << 7) & 0x0000000000007F80;
+						 t |=        ((Packet[9 + Offset + 4]& 0xFE) >> 1) & 0x000000000000007F;
+						*lpPTS = t;
+						return 1;
+					}
+				}
+			}
+		}
+	}
+	return 0;
+}
+int GetT12(LPBYTE Packet, uint64_t* lpPTS)
+{
+    // To be complated
+    *lpPTS = 0;
+    return 0;
+}
+void TSThread(prometheus::Gauge& pcr_timestamp,
+              prometheus::Gauge& pcr_timestamp_acquisition_time,
+              prometheus::Gauge& opcr_timestamp,
+              prometheus::Gauge& opcr_timestamp_acquisition_time, 
+              prometheus::Gauge& dts_timestamp,
+              prometheus::Gauge& dts_timestamp_acquisition_time, 
+              prometheus::Gauge& pts_timestamp,
+              prometheus::Gauge& pts_timestamp_acquisition_time, 
+              prometheus::Gauge& t12_timestamp,
+              prometheus::Gauge& t12_timestamp_acquisition_time, 
+              std::string LocalTSAddress, WORD LocalTSPort, bool verbose )
 {
     int buffersize = PACKET_SIZE*70;
 	char buffer[70*PACKET_SIZE];
@@ -283,35 +486,70 @@ void TSThread(prometheus::Gauge& gauge, std::string LocalTSAddress, WORD LocalTS
             if(len != 0)
             {
                 BYTE* packet = (LPBYTE)buffer;
-                int l   = len;
+                int length   = len;
                  uint64_t PCR = 0;
+                 uint64_t l;
                  WORD PID = 0;
 
-                while((packet != NULL) && (l >= PACKET_SIZE))
+                while((packet != NULL) && (length >= PACKET_SIZE))
                 {
                     if((packet[0]==0x47)&& ((packet[1]&0x80)==0))
                     {
-                        if( ((packet[3]&0x20)!=0) && (packet[4]!=0))
+                        if(GetPCRInAdaptationField((LPBYTE)packet,&l))
                         {
-                            if(packet[5]&0x10)
-                            {
-                            WORD PID= MAKEWORD(packet[2], packet[1]&0x1F);
-                            uint64_t t = (((packet[6] << 24) | (packet[7] << 16) | (packet[8] << 8) | (packet[9])) & 0xFFFFFFFF);
-                            t = t << 1;
-
-                            if((packet[10] & 0x80)== 0x80)
-                                PCR = (t) | 0x000000001;
-                            else
-                                PCR = (t) & 0xFFFFFFFFE;
-
-                            double pcr = (double) PCR/90000;
-                            gauge.Set(pcr);
+                            double timestamp = (double) l/90000;
+                            pcr_timestamp.Set(timestamp);
+                            pcr_timestamp_acquisition_time.Set(now());
                             if(verbose)
-                                std::cout << "PCR received value " << PCR << " - " << pcr << " s " << std::endl;
-                            }
+                                std::cout << "PCR received value " << l << " - " << timestamp << " s " << std::endl;
+                            
+
+                        }
+						if(GetOPCRInAdaptationField((LPBYTE)packet,&l))
+                        {
+                            double timestamp = (double) l/90000;
+                            opcr_timestamp.Set(timestamp);
+                            opcr_timestamp_acquisition_time.Set(now());
+                            if(verbose)
+                                std::cout << "OPCR received value " << l << " - " << timestamp << " s " << std::endl;
+
+                        }
+						 if(GetDTSInAdaptationField((LPBYTE)packet,&l))
+                        {
+                            double timestamp =  l;
+                            dts_timestamp.Set(timestamp);
+                            dts_timestamp_acquisition_time.Set(now());
+                            if(verbose)
+                                std::cout << "DTS received value " << l << " - " << timestamp << " s " << std::endl;
+
+                        }
+						 if(GetDTSInPES((LPBYTE)packet,&l))
+                        {
+                            double timestamp = (double) l;
+                            dts_timestamp.Set(timestamp);
+                            dts_timestamp_acquisition_time.Set(now());
+                            if(verbose)
+                                std::cout << "DTS received value " << l << " - " << timestamp << " s " << std::endl;
+
+                        }
+						 if(GetPTSInPES((LPBYTE)packet,&l))
+                        {
+                            double timestamp = (double) l;
+                            pts_timestamp.Set(timestamp);
+                            pts_timestamp_acquisition_time.Set(now());
+                            if(verbose)
+                                std::cout << "PTS received value " << l << " - " << timestamp << " s " << std::endl;
+                        }
+                        if(GetT12((LPBYTE)packet,&l))
+                        {
+                            double timestamp = (double) l;
+                            t12_timestamp.Set(timestamp);
+                            t12_timestamp_acquisition_time.Set(now());
+                            if(verbose)
+                                std::cout << "T-12 received value " << l << " - " << timestamp << " s " << std::endl;
                         }
                     }
-                    l -= PACKET_SIZE;
+                    length -= PACKET_SIZE;
                     packet += PACKET_SIZE;
                 }
 
@@ -323,7 +561,6 @@ void TSThread(prometheus::Gauge& gauge, std::string LocalTSAddress, WORD LocalTS
 
 
 }
-
 int main(int argc, char* argv[]) {
     using namespace prometheus;
     std::string	LocalPrometheusPort = "8080";
@@ -332,6 +569,12 @@ int main(int argc, char* argv[]) {
 	bool verbose = false;
 
 
+    if(verbose)
+    {
+        long n = now();
+        std::string ns = nowstring(n);
+        std::cout << "Start Time tick (nano seconds): " << n << " Start Time String : " <<ns << std::endl;
+    }
   	bool result = ParseCommandLine(argc, argv, LocalPrometheusPort,LocalTSAddress,LocalTSPort, verbose);
 	if (result == false)
 	{
@@ -372,14 +615,46 @@ int main(int argc, char* argv[]) {
                                 .Labels({{"label", "value"}})
                                 .Register(*registry);
     
-    prometheus::Gauge& pcr_counter = gauge_family.Add(
-        {{"pcr_counter", "value"}});
+    prometheus::Gauge& pcr_timestamp = gauge_family.Add(
+        {{"pcr_timestamp", "value"}});
+    prometheus::Gauge& pcr_timestamp_acquisition_time = gauge_family.Add(
+        {{"pcr_timestamp_acquisition_time", "value"}});
+
+    prometheus::Gauge& opcr_timestamp = gauge_family.Add(
+        {{"opcr_timestamp", "value"}});
+    prometheus::Gauge& opcr_timestamp_acquisition_time = gauge_family.Add(
+        {{"opcr_timestamp_acquisition_time", "value"}});
+
+    prometheus::Gauge& dts_timestamp = gauge_family.Add(
+        {{"dts_timestamp", "value"}});
+    prometheus::Gauge& dts_timestamp_acquisition_time = gauge_family.Add(
+        {{"dts_timestamp_acquisition_time", "value"}});
+
+    prometheus::Gauge& pts_timestamp = gauge_family.Add(
+        {{"pts_timestamp", "value"}});
+    prometheus::Gauge& pts_timestamp_acquisition_time = gauge_family.Add(
+        {{"pts_timestamp_acquisition_time", "value"}});
+
+    prometheus::Gauge& t12_timestamp = gauge_family.Add(
+        {{"t12_timestamp", "value"}});
+    prometheus::Gauge& t12_timestamp_acquisition_time = gauge_family.Add(
+        {{"t12_timestamp_acquisition_time", "value"}});
 
     // ask the exposer to scrape the registry on incoming scrapes
     exposer.RegisterCollectable(registry);
 
     // Create Threads for TS Timestamps
-    std::thread thts   (TSThread, std::ref(pcr_counter),LocalTSAddress, LocalTSPort, verbose);
+    std::thread thts   (TSThread, std::ref(pcr_timestamp), 
+                                  std::ref(pcr_timestamp_acquisition_time),
+                                  std::ref(opcr_timestamp), 
+                                  std::ref(opcr_timestamp_acquisition_time),
+                                  std::ref(dts_timestamp), 
+                                  std::ref(dts_timestamp_acquisition_time),
+                                  std::ref(pts_timestamp), 
+                                  std::ref(pts_timestamp_acquisition_time),
+                                  std::ref(t12_timestamp), 
+                                  std::ref(t12_timestamp_acquisition_time),
+                                  LocalTSAddress, LocalTSPort, verbose);
 
     for (;;) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -388,3 +663,4 @@ int main(int argc, char* argv[]) {
     }
   return 0;
 }
+
