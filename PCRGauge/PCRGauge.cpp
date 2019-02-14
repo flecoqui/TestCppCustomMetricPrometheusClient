@@ -497,7 +497,7 @@ void TSThread(prometheus::Gauge& pcr_timestamp,
                     {
                         if(GetPCRInAdaptationField((LPBYTE)packet,&l))
                         {
-                            double timestamp = (double) l/90000;
+                            double timestamp = (double) l/27000000;
                             pcr_timestamp.Set(timestamp);
                             pcr_timestamp_acquisition_time.Set(now());
                             if(verbose)
@@ -507,7 +507,7 @@ void TSThread(prometheus::Gauge& pcr_timestamp,
                         }
 						if(GetOPCRInAdaptationField((LPBYTE)packet,&l))
                         {
-                            double timestamp = (double) l/90000;
+                            double timestamp = (double) l/27000000;
                             opcr_timestamp.Set(timestamp);
                             opcr_timestamp_acquisition_time.Set(now());
                             if(verbose)
@@ -516,7 +516,7 @@ void TSThread(prometheus::Gauge& pcr_timestamp,
                         }
 						 if(GetDTSInAdaptationField((LPBYTE)packet,&l))
                         {
-                            double timestamp =  l;
+                            double timestamp =  (double)l/90000;
                             dts_timestamp.Set(timestamp);
                             dts_timestamp_acquisition_time.Set(now());
                             if(verbose)
@@ -525,7 +525,7 @@ void TSThread(prometheus::Gauge& pcr_timestamp,
                         }
 						 if(GetDTSInPES((LPBYTE)packet,&l))
                         {
-                            double timestamp = (double) l;
+                            double timestamp = (double) l/90000;
                             dts_timestamp.Set(timestamp);
                             dts_timestamp_acquisition_time.Set(now());
                             if(verbose)
@@ -534,7 +534,7 @@ void TSThread(prometheus::Gauge& pcr_timestamp,
                         }
 						 if(GetPTSInPES((LPBYTE)packet,&l))
                         {
-                            double timestamp = (double) l;
+                            double timestamp = (double) l/90000;
                             pts_timestamp.Set(timestamp);
                             pts_timestamp_acquisition_time.Set(now());
                             if(verbose)
@@ -608,36 +608,87 @@ int main(int argc, char* argv[]) {
     // add a counter to the metric family
     prometheus::Counter& time_counter = counter_family.Add(
         {{"time_counter", "value"}});
-
-    auto& gauge_family =  BuildGauge()
-                                .Name("ts_timestamps")
-                                .Help("Display TS timestamps")
+    auto& pcr_timestamp_family =  BuildGauge()
+                                .Name("pcr_timestamp")
+                                .Help("Display PCR timestamp")
                                 .Labels({{"label", "value"}})
                                 .Register(*registry);
-    
-    prometheus::Gauge& pcr_timestamp = gauge_family.Add(
+    prometheus::Gauge& pcr_timestamp = pcr_timestamp_family.Add(
         {{"pcr_timestamp", "value"}});
-    prometheus::Gauge& pcr_timestamp_acquisition_time = gauge_family.Add(
+
+
+    auto& pcr_timestamp_acquisition_time_family =  BuildGauge()
+                                .Name("pcr_acquisition_time")
+                                .Help("Display PCR Acquisition Time")
+                                .Labels({{"label", "value"}})
+                                .Register(*registry);
+    prometheus::Gauge& pcr_timestamp_acquisition_time = pcr_timestamp_acquisition_time_family.Add(
         {{"pcr_timestamp_acquisition_time", "value"}});
 
-    prometheus::Gauge& opcr_timestamp = gauge_family.Add(
+    auto& opcr_timestamp_family =  BuildGauge()
+                                .Name("opcr_timestamp")
+                                .Help("Display OPCR timestamp")
+                                .Labels({{"label", "value"}})
+                                .Register(*registry);
+    prometheus::Gauge& opcr_timestamp = opcr_timestamp_family.Add(
         {{"opcr_timestamp", "value"}});
-    prometheus::Gauge& opcr_timestamp_acquisition_time = gauge_family.Add(
+
+    auto& opcr_timestamp_acquisition_time_family =  BuildGauge()
+                                .Name("opcr_acquisition_time")
+                                .Help("Display OPCR Acquisition Time")
+                                .Labels({{"label", "value"}})
+                                .Register(*registry);
+    prometheus::Gauge& opcr_timestamp_acquisition_time = opcr_timestamp_acquisition_time_family.Add(
         {{"opcr_timestamp_acquisition_time", "value"}});
 
-    prometheus::Gauge& dts_timestamp = gauge_family.Add(
+    auto& dts_timestamp_family =  BuildGauge()
+                                .Name("dts_timestamp")
+                                .Help("Display DTS timestamp")
+                                .Labels({{"label", "value"}})
+                                .Register(*registry);
+    prometheus::Gauge& dts_timestamp = dts_timestamp_family.Add(
         {{"dts_timestamp", "value"}});
-    prometheus::Gauge& dts_timestamp_acquisition_time = gauge_family.Add(
+
+    auto& dts_timestamp_acquisition_time_family =  BuildGauge()
+                                .Name("dts_acquisition_time")
+                                .Help("Display DTS Acquisition Time")
+                                .Labels({{"label", "value"}})
+                                .Register(*registry);
+    prometheus::Gauge& dts_timestamp_acquisition_time = dts_timestamp_acquisition_time_family.Add(
         {{"dts_timestamp_acquisition_time", "value"}});
 
-    prometheus::Gauge& pts_timestamp = gauge_family.Add(
+    auto& pts_timestamp_family =  BuildGauge()
+                                .Name("pts_timestamp")
+                                .Help("Display PTS timestamp")
+                                .Labels({{"label", "value"}})
+                                .Register(*registry);
+    prometheus::Gauge& pts_timestamp = pts_timestamp_family.Add(
         {{"pts_timestamp", "value"}});
-    prometheus::Gauge& pts_timestamp_acquisition_time = gauge_family.Add(
+
+    auto& pts_timestamp_acquisition_time_family =  BuildGauge()
+                                .Name("pts_acquisition_time")
+                                .Help("Display PTS Acquisition Time")
+                                .Labels({{"label", "value"}})
+                                .Register(*registry);        
+    prometheus::Gauge& pts_timestamp_acquisition_time = pts_timestamp_acquisition_time_family.Add(
         {{"pts_timestamp_acquisition_time", "value"}});
 
-    prometheus::Gauge& t12_timestamp = gauge_family.Add(
+
+    auto& t12_timestamp_family =  BuildGauge()
+                                .Name("t12_timestamp")
+                                .Help("Display T-12 timestamp")
+                                .Labels({{"label", "value"}})
+                                .Register(*registry);
+    prometheus::Gauge& t12_timestamp = t12_timestamp_family.Add(
         {{"t12_timestamp", "value"}});
-    prometheus::Gauge& t12_timestamp_acquisition_time = gauge_family.Add(
+
+
+    auto& t12_timestamp_acquisition_time_family =  BuildGauge()
+                                .Name("t12_acquisition_time")
+                                .Help("Display T-12 Acquisition Time")
+                                .Labels({{"label", "value"}})
+                                .Register(*registry);
+    prometheus::Gauge& t12_timestamp_acquisition_time = t12_timestamp_acquisition_time_family.Add(
         {{"t12_timestamp_acquisition_time", "value"}});
 
     // ask the exposer to scrape the registry on incoming scrapes
