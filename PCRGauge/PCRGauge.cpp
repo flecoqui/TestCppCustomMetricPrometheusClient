@@ -54,7 +54,107 @@
 typedef  unsigned long ULONG_PTR, *PULONG_PTR;
 typedef ULONG_PTR DWORD_PTR, *PDWORD_PTR;
 #define MAKEWORD(a, b)      ((WORD)(((BYTE)(((DWORD_PTR)(a)) & 0xff)) | ((WORD)((BYTE)(((DWORD_PTR)(b)) & 0xff))) << 8))
+/*
+class InputStream {
+public:
+	InputStream()
+    {
+	address = std::string("");
+	port = 0;
+    prefix = std::string("");
+    }    
+	std::string address;
+	WORD port;
+	std::string prefix;
+};
+*/
+class InputStream {
+public:
+    InputStream(
+        	std::string _address,
+            WORD _port,
+            std::string _prefix,
+            prometheus::Gauge&  _pcr_timestamp,
+            prometheus::Gauge&  _pcr_timestamp_acquisition_time,
+            prometheus::Gauge&  _opcr_timestamp,
+            prometheus::Gauge&  _opcr_timestamp_acquisition_time,
+            prometheus::Gauge&  _dts_timestamp,
+            prometheus::Gauge&  _dts_timestamp_acquisition_time,
+            prometheus::Gauge&  _pts_timestamp,
+            prometheus::Gauge&  _pts_timestamp_acquisition_time,
+            prometheus::Gauge&  _t12_timestamp,
+            prometheus::Gauge&  _t12_timestamp_acquisition_time)
+    {
+	address = _address;
+	port = _port;
+    prefix = _prefix;
 
+    pcr_timestamp.Set(_pcr_timestamp.Value());
+    pcr_timestamp_acquisition_time.Set(_pcr_timestamp_acquisition_time.Value());
+    opcr_timestamp.Set(_opcr_timestamp.Value());
+    opcr_timestamp_acquisition_time.Set( _opcr_timestamp_acquisition_time.Value());
+    dts_timestamp.Set(_dts_timestamp.Value());
+    dts_timestamp_acquisition_time.Set(_dts_timestamp_acquisition_time.Value());
+    pts_timestamp.Set(_pts_timestamp.Value());
+    pts_timestamp_acquisition_time.Set(_pts_timestamp_acquisition_time.Value());
+    t12_timestamp.Set(_t12_timestamp.Value());
+    t12_timestamp_acquisition_time.Set(_t12_timestamp_acquisition_time.Value());  
+
+    }
+    InputStream()
+    {
+	address = std::string("");
+	port = 0;
+	prefix = std::string("");
+    pcr_timestamp.Set(GetGauge().Value());
+    pcr_timestamp_acquisition_time.Set(GetGauge().Value());
+    opcr_timestamp.Set(GetGauge().Value());
+    opcr_timestamp_acquisition_time.Set(GetGauge().Value());
+    dts_timestamp.Set(GetGauge().Value());
+    dts_timestamp_acquisition_time.Set(GetGauge().Value());
+    pts_timestamp.Set(GetGauge().Value());
+    pts_timestamp_acquisition_time.Set(GetGauge().Value());
+    t12_timestamp.Set(GetGauge().Value());
+    t12_timestamp_acquisition_time.Set(GetGauge().Value());    
+    }
+    InputStream(const InputStream& i)
+    {
+	address = i.address;
+	port = i.port;
+	prefix = i.prefix;
+    pcr_timestamp.Set(i.pcr_timestamp.Value());
+    pcr_timestamp_acquisition_time.Set(i.pcr_timestamp_acquisition_time.Value());
+    opcr_timestamp.Set(i.opcr_timestamp.Value());
+    opcr_timestamp_acquisition_time.Set(i.opcr_timestamp_acquisition_time.Value());
+    dts_timestamp.Set(i.dts_timestamp.Value());
+    dts_timestamp_acquisition_time.Set(i.dts_timestamp_acquisition_time.Value());
+    pts_timestamp.Set(i.pts_timestamp.Value());
+    pts_timestamp_acquisition_time.Set(i.pts_timestamp_acquisition_time.Value());
+    t12_timestamp.Set(i.t12_timestamp.Value());
+    t12_timestamp_acquisition_time.Set(i.t12_timestamp_acquisition_time.Value());    
+    }
+	std::string address;
+	WORD port;
+	std::string prefix;
+    prometheus::Gauge&  pcr_timestamp = GetGauge();
+    prometheus::Gauge&  pcr_timestamp_acquisition_time = GetGauge();
+    prometheus::Gauge&  opcr_timestamp = GetGauge();
+    prometheus::Gauge&  opcr_timestamp_acquisition_time = GetGauge();
+    prometheus::Gauge&  dts_timestamp  = GetGauge();
+    prometheus::Gauge&  dts_timestamp_acquisition_time = GetGauge();
+    prometheus::Gauge&  pts_timestamp = GetGauge();
+    prometheus::Gauge&  pts_timestamp_acquisition_time = GetGauge();
+    prometheus::Gauge&  t12_timestamp = GetGauge();
+    prometheus::Gauge&  t12_timestamp_acquisition_time = GetGauge();    
+
+
+    prometheus::Gauge _gauge;
+
+    prometheus::Gauge& GetGauge()
+    {
+        return _gauge;
+    }
+};
 
 class UDPMulticastReceiver
 {
@@ -187,19 +287,30 @@ private:
 	struct ip_mreq m_imr;
 
 };
+std::vector<std::string> split(const std::string& s, char seperator)
+{
+    std::vector<std::string> output;
+    std::string::size_type prev_pos = 0, pos = 0;
 
+    while((pos = s.find(seperator, pos)) != std::string::npos)
+    {
+        std::string substring( s.substr(prev_pos, pos-prev_pos) );
+        output.push_back(substring);
+        prev_pos = ++pos;
+    }
+    output.push_back(s.substr(prev_pos, pos-prev_pos)); // Last word
+    return output;
+}
 bool ParseCommandLine(int argc, char* argv[],
 	std::string& LocalPrometheusPort,
-	std::string& LocalTSAddress,
-    WORD& LocalTSPort,
+    std::vector<InputStream>& Array,
 	bool& verbose
 )
 {
     bool result = false;
 	verbose = false;
+    const char* endPointPrefix = "EndPoint_";
 	LocalPrometheusPort = "8080";
-    LocalTSAddress = "127.0.0.1";
-    LocalTSPort = 1234;
 	try
 	{
 		while (--argc != 0)
@@ -217,13 +328,41 @@ bool ParseCommandLine(int argc, char* argv[],
 				{
 					if (--argc != 0)
                     {
-						std::string s = *++argv;
-                        size_t pos = s.find(':');
-                        if((pos>0) && (pos < (s.length()-1)))
+                        std::vector<std::string> arrayEndPoint =  split(*++argv,',');
+                        if(arrayEndPoint.size()>0)
                         {
-                            LocalTSAddress = s.substr(0,pos);
-                            LocalTSPort = (WORD) atoi(s.substr(pos+1,s.length()-1).c_str());
-                        
+                            int index = 0;
+                            for(std::string  s : arrayEndPoint)
+                            {
+                                std::vector<std::string> endPoint =  split(s,':');
+                                if(endPoint.size()==2)
+                                {
+                                    InputStream *pis = new InputStream();
+                                    if(pis!=nullptr)
+                                    {
+                                        pis->address = endPoint[0];
+                                        pis->prefix = endPointPrefix + std::to_string(index) ;
+                                        pis->port =  (WORD) atoi(endPoint[1].c_str()); 
+                                        Array.push_back(*pis);
+                                    }
+                                }
+                                else if(endPoint.size()==3)
+                                {
+                                    InputStream *pis = new InputStream();
+                                    if(pis!=nullptr)
+                                    {
+                                        pis->address = endPoint[1];
+                                        pis->prefix = endPoint[0] ;
+                                        pis->port =  (WORD) atoi(endPoint[2].c_str());
+                                        Array.push_back(*pis);
+                                    }
+                                }
+                                else
+                                {
+                                    return result;
+                                }
+                                index++;
+                            }
                         }
                     }
 				}
@@ -235,8 +374,7 @@ bool ParseCommandLine(int argc, char* argv[],
 					return result;
 			}
 		}
-		if ((LocalPrometheusPort.length() > 0) &&
-			(LocalTSAddress.length() > 0) )
+		if (Array.size() > 0)
 		{
 				result = true;
 		}
@@ -464,7 +602,9 @@ void TSThread(prometheus::Gauge& pcr_timestamp,
               prometheus::Gauge& pts_timestamp_acquisition_time, 
               prometheus::Gauge& t12_timestamp,
               prometheus::Gauge& t12_timestamp_acquisition_time, 
-              std::string LocalTSAddress, WORD LocalTSPort, bool verbose )
+              std::string LocalTSAddress, 
+              WORD LocalTSPort, 
+              bool verbose )
 {
     int buffersize = PACKET_SIZE*70;
 	char buffer[70*PACKET_SIZE];
@@ -561,28 +701,32 @@ void TSThread(prometheus::Gauge& pcr_timestamp,
 
 
 }
+
+
 int main(int argc, char* argv[]) {
     using namespace prometheus;
     std::string	LocalPrometheusPort = "8080";
     std::string  LocalTSAddress = "127.0.0.1";
     WORD LocalTSPort = 1234;
 	bool verbose = false;
-
-
+    std::vector<InputStream> InputStreamArray;
+    
     if(verbose)
     {
         long n = now();
         std::string ns = nowstring(n);
         std::cout << "Start Time tick (nano seconds): " << n << " Start Time String : " <<ns << std::endl;
     }
-  	bool result = ParseCommandLine(argc, argv, LocalPrometheusPort,LocalTSAddress,LocalTSPort, verbose);
+  	bool result = ParseCommandLine(argc, argv, LocalPrometheusPort,InputStreamArray, verbose);
 	if (result == false)
 	{
 		std::cout << "PCR Gauge Custom Prometheus Client : syntax error" << std::endl;
 		std::cout << "Syntax:" << std::endl;
 		std::cout << "PCRGauge --prometheusport \"<local TCP port used to receive Prometheus request>\" " << std::endl;
-		std::cout << "         --tsport \"<local UDP port used to receive the TS stream>\" " << std::endl;
+		std::cout << "         --tsport \"<local IP address and UDP port used to receive the TS stream>\" " << std::endl;
 		std::cout << "        [--verbose] " << std::endl;
+		std::cout << "For instance: " << std::endl;
+		std::cout << "    PCRGauge --prometheusport 8008 --tsport input_stream_0:239.0.0.1:1234,127.0.0.1:5678,output_stream_0:192.168.1.5:8888" << std::endl;
 		return 0;
 	}
 
@@ -604,108 +748,118 @@ int main(int argc, char* argv[]) {
                                 .Help("How many seconds is this server running?")
                                 .Labels({{"label", "value"}})
                                 .Register(*registry);
-
     // add a counter to the metric family
     prometheus::Counter& time_counter = counter_family.Add(
-        {{"time_counter", "value"}});
-    auto& pcr_timestamp_family =  BuildGauge()
-                                .Name("pcr_timestamp")
-                                .Help("Display PCR timestamp")
-                                .Labels({{"label", "value"}})
-                                .Register(*registry);
-    prometheus::Gauge& pcr_timestamp = pcr_timestamp_family.Add(
-        {{"pcr_timestamp", "value"}});
+        {{"time_counter", "value"}});                                
+
+    //InputStream is = InputStreamArray[0];
+    for(InputStream is : InputStreamArray)
+    {
+        if(verbose)
+            std::cout << "Preparing timestamps for : " << is.address << ":" << is.port << " with prefix: " << is.prefix << std::endl;
+        auto& pcr_timestamp_family =  BuildGauge()
+                                    .Name(is.prefix + "_pcr_timestamp")
+                                    .Help("Display PCR timestamp for "+ is.prefix )
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+        prometheus::Gauge&  pcr_timestamp = pcr_timestamp_family.Add(
+            {{is.prefix + "_pcr_timestamp", "value"}});
 
 
-    auto& pcr_timestamp_acquisition_time_family =  BuildGauge()
-                                .Name("pcr_acquisition_time")
-                                .Help("Display PCR Acquisition Time")
-                                .Labels({{"label", "value"}})
-                                .Register(*registry);
-    prometheus::Gauge& pcr_timestamp_acquisition_time = pcr_timestamp_acquisition_time_family.Add(
-        {{"pcr_timestamp_acquisition_time", "value"}});
+        auto& pcr_timestamp_acquisition_time_family =  BuildGauge()
+                                    .Name(is.prefix + "_pcr_acquisition_time")
+                                    .Help("Display PCR Acquisition Time for " + is.prefix)
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+        prometheus::Gauge& pcr_timestamp_acquisition_time = pcr_timestamp_acquisition_time_family.Add(
+            {{is.prefix + "_pcr_timestamp_acquisition_time", "value"}});
 
-    auto& opcr_timestamp_family =  BuildGauge()
-                                .Name("opcr_timestamp")
-                                .Help("Display OPCR timestamp")
-                                .Labels({{"label", "value"}})
-                                .Register(*registry);
-    prometheus::Gauge& opcr_timestamp = opcr_timestamp_family.Add(
-        {{"opcr_timestamp", "value"}});
+        auto& opcr_timestamp_family =  BuildGauge()
+                                    .Name(is.prefix + "_opcr_timestamp")
+                                    .Help("Display OPCR timestamp for " + is.prefix)
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+        prometheus::Gauge& opcr_timestamp = opcr_timestamp_family.Add(
+            {{is.prefix + "_opcr_timestamp", "value"}});
 
-    auto& opcr_timestamp_acquisition_time_family =  BuildGauge()
-                                .Name("opcr_acquisition_time")
-                                .Help("Display OPCR Acquisition Time")
-                                .Labels({{"label", "value"}})
-                                .Register(*registry);
-    prometheus::Gauge& opcr_timestamp_acquisition_time = opcr_timestamp_acquisition_time_family.Add(
-        {{"opcr_timestamp_acquisition_time", "value"}});
+        auto& opcr_timestamp_acquisition_time_family =  BuildGauge()
+                                    .Name(is.prefix + "_opcr_acquisition_time")
+                                    .Help("Display OPCR Acquisition Time for " + is.prefix)
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+        prometheus::Gauge& opcr_timestamp_acquisition_time = opcr_timestamp_acquisition_time_family.Add(
+            {{is.prefix + "_opcr_timestamp_acquisition_time", "value"}});
 
-    auto& dts_timestamp_family =  BuildGauge()
-                                .Name("dts_timestamp")
-                                .Help("Display DTS timestamp")
-                                .Labels({{"label", "value"}})
-                                .Register(*registry);
-    prometheus::Gauge& dts_timestamp = dts_timestamp_family.Add(
-        {{"dts_timestamp", "value"}});
+        auto& dts_timestamp_family =  BuildGauge()
+                                    .Name(is.prefix + "_dts_timestamp")
+                                    .Help("Display DTS timestamp for "+ is.prefix)
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+        prometheus::Gauge& dts_timestamp = dts_timestamp_family.Add(
+            {{is.prefix + "_dts_timestamp", "value"}});
 
-    auto& dts_timestamp_acquisition_time_family =  BuildGauge()
-                                .Name("dts_acquisition_time")
-                                .Help("Display DTS Acquisition Time")
-                                .Labels({{"label", "value"}})
-                                .Register(*registry);
-    prometheus::Gauge& dts_timestamp_acquisition_time = dts_timestamp_acquisition_time_family.Add(
-        {{"dts_timestamp_acquisition_time", "value"}});
+        auto& dts_timestamp_acquisition_time_family =  BuildGauge()
+                                    .Name(is.prefix + "_dts_acquisition_time")
+                                    .Help("Display DTS Acquisition Time for "+ is.prefix )
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+        prometheus::Gauge& dts_timestamp_acquisition_time = dts_timestamp_acquisition_time_family.Add(
+            {{is.prefix + "_dts_timestamp_acquisition_time", "value"}});
 
-    auto& pts_timestamp_family =  BuildGauge()
-                                .Name("pts_timestamp")
-                                .Help("Display PTS timestamp")
-                                .Labels({{"label", "value"}})
-                                .Register(*registry);
-    prometheus::Gauge& pts_timestamp = pts_timestamp_family.Add(
-        {{"pts_timestamp", "value"}});
+        auto& pts_timestamp_family =  BuildGauge()
+                                    .Name(is.prefix + "_pts_timestamp")
+                                    .Help("Display PTS timestamp for "+ is.prefix)
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+        prometheus::Gauge& pts_timestamp = pts_timestamp_family.Add(
+            {{is.prefix + "_pts_timestamp", "value"}});
 
-    auto& pts_timestamp_acquisition_time_family =  BuildGauge()
-                                .Name("pts_acquisition_time")
-                                .Help("Display PTS Acquisition Time")
-                                .Labels({{"label", "value"}})
-                                .Register(*registry);        
-    prometheus::Gauge& pts_timestamp_acquisition_time = pts_timestamp_acquisition_time_family.Add(
-        {{"pts_timestamp_acquisition_time", "value"}});
-
-
-    auto& t12_timestamp_family =  BuildGauge()
-                                .Name("t12_timestamp")
-                                .Help("Display T-12 timestamp")
-                                .Labels({{"label", "value"}})
-                                .Register(*registry);
-    prometheus::Gauge& t12_timestamp = t12_timestamp_family.Add(
-        {{"t12_timestamp", "value"}});
+        auto& pts_timestamp_acquisition_time_family =  BuildGauge()
+                                    .Name(is.prefix + "_pts_acquisition_time")
+                                    .Help("Display PTS Acquisition Time for "+ is.prefix)
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);        
+        prometheus::Gauge& pts_timestamp_acquisition_time = pts_timestamp_acquisition_time_family.Add(
+            {{is.prefix + "_pts_timestamp_acquisition_time", "value"}});
 
 
-    auto& t12_timestamp_acquisition_time_family =  BuildGauge()
-                                .Name("t12_acquisition_time")
-                                .Help("Display T-12 Acquisition Time")
-                                .Labels({{"label", "value"}})
-                                .Register(*registry);
-    prometheus::Gauge& t12_timestamp_acquisition_time = t12_timestamp_acquisition_time_family.Add(
-        {{"t12_timestamp_acquisition_time", "value"}});
+        auto& t12_timestamp_family =  BuildGauge()
+                                    .Name(is.prefix + "_t12_timestamp")
+                                    .Help("Display T-12 timestamp for " + is.prefix)
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+        prometheus::Gauge& t12_timestamp = t12_timestamp_family.Add(
+            {{is.prefix + "_t12_timestamp", "value"}});
 
-    // ask the exposer to scrape the registry on incoming scrapes
-    exposer.RegisterCollectable(registry);
 
-    // Create Threads for TS Timestamps
-    std::thread thts   (TSThread, std::ref(pcr_timestamp), 
-                                  std::ref(pcr_timestamp_acquisition_time),
-                                  std::ref(opcr_timestamp), 
-                                  std::ref(opcr_timestamp_acquisition_time),
-                                  std::ref(dts_timestamp), 
-                                  std::ref(dts_timestamp_acquisition_time),
-                                  std::ref(pts_timestamp), 
-                                  std::ref(pts_timestamp_acquisition_time),
-                                  std::ref(t12_timestamp), 
-                                  std::ref(t12_timestamp_acquisition_time),
-                                  LocalTSAddress, LocalTSPort, verbose);
+        auto& t12_timestamp_acquisition_time_family =  BuildGauge()
+                                    .Name(is.prefix + "_t12_acquisition_time")
+                                    .Help("Display T-12 Acquisition Time for "+ is.prefix)
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+        prometheus::Gauge& t12_timestamp_acquisition_time = t12_timestamp_acquisition_time_family.Add(
+            {{is.prefix + "_t12_timestamp_acquisition_time", "value"}});
+        // ask the exposer to scrape the registry on incoming scrapes
+        exposer.RegisterCollectable(registry);
+        if(verbose)
+            std::cout << "Preparation of timestamps done for : " << is.address << ":" << is.port << " with prefix: " << is.prefix << std::endl;
+
+
+        std::thread *thts  = new  std::thread (TSThread, std::ref(pcr_timestamp), 
+                                    std::ref(pcr_timestamp_acquisition_time),
+                                    std::ref(opcr_timestamp), 
+                                    std::ref(opcr_timestamp_acquisition_time),
+                                    std::ref(dts_timestamp), 
+                                    std::ref(dts_timestamp_acquisition_time),
+                                    std::ref(pts_timestamp), 
+                                    std::ref(pts_timestamp_acquisition_time),
+                                    std::ref(t12_timestamp), 
+                                    std::ref(t12_timestamp_acquisition_time),
+                                    is.address, is.port, verbose);
+
+        
+        
+    }
 
     for (;;) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
