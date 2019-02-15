@@ -372,7 +372,7 @@ bool ParseCommandLine(int argc, char* argv[],
                                     if(pis!=nullptr)
                                     {
                                         pis->address = endPoint[0];
-                                        pis->prefix = endPointPrefix + std::to_string(index) ;
+                                        pis->prefix = endPoint[0] + ":" + endPoint[1].c_str() ;
                                         pis->port =  (WORD) atoi(endPoint[1].c_str()); 
                                         Array.push_back(*pis);
                                     }
@@ -775,92 +775,91 @@ int main(int argc, char* argv[]) {
         {{"time_counter", "value"}});                                
 
 
+    auto& pcr_timestamp_family =  BuildGauge()
+                                .Name("pcr_timestamp")
+                                .Help("Display PCR timestamp" )
+                                .Labels({{"label", "value"}})
+                                .Register(*registry);
+        auto& pcr_timestamp_acquisition_time_family =  BuildGauge()
+                                    .Name("pcr_acquisition_time")
+                                    .Help("Display PCR Acquisition Time")
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+        auto& opcr_timestamp_family =  BuildGauge()
+                                    .Name("opcr_timestamp")
+                                    .Help("Display OPCR timestamp")
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+
+        auto& opcr_timestamp_acquisition_time_family =  BuildGauge()
+                                    .Name("opcr_acquisition_time")
+                                    .Help("Display OPCR Acquisition Time")
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+        auto& dts_timestamp_family =  BuildGauge()
+                                    .Name("dts_timestamp")
+                                    .Help("Display DTS timestamp")
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+        auto& dts_timestamp_acquisition_time_family =  BuildGauge()
+                                    .Name("dts_acquisition_time")
+                                    .Help("Display DTS Acquisition Time" )
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+        auto& pts_timestamp_family =  BuildGauge()
+                                    .Name("pts_timestamp")
+                                    .Help("Display PTS timestamp")
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+        auto& pts_timestamp_acquisition_time_family =  BuildGauge()
+                                    .Name("pts_acquisition_time")
+                                    .Help("Display PTS Acquisition Time")
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);        
+        auto& t12_timestamp_family =  BuildGauge()
+                                    .Name("t12_timestamp")
+                                    .Help("Display T-12 timestamp")
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+        auto& t12_timestamp_acquisition_time_family =  BuildGauge()
+                                    .Name("t12_acquisition_time")
+                                    .Help("Display T-12 Acquisition Time")
+                                    .Labels({{"label", "value"}})
+                                    .Register(*registry);
+
     for(InputStream is : InputStreamArray)
     {
         if(verbose)
             std::cout << "Preparing timestamps for : " << is.address << ":" << is.port << " with prefix: " << is.prefix << std::endl;
-        auto& pcr_timestamp_family =  BuildGauge()
-                                    .Name(is.prefix + "_pcr_timestamp")
-                                    .Help("Display PCR timestamp for "+ is.prefix )
-                                    .Labels({{"label", "value"}})
-                                    .Register(*registry);
         prometheus::Gauge&  pcr_timestamp = pcr_timestamp_family.Add(
-            {{is.prefix + "_pcr_timestamp", "value"}});
+            {{"endpoint", is.prefix}});
 
-
-        auto& pcr_timestamp_acquisition_time_family =  BuildGauge()
-                                    .Name(is.prefix + "_pcr_acquisition_time")
-                                    .Help("Display PCR Acquisition Time for " + is.prefix)
-                                    .Labels({{"label", "value"}})
-                                    .Register(*registry);
         prometheus::Gauge& pcr_timestamp_acquisition_time = pcr_timestamp_acquisition_time_family.Add(
-            {{is.prefix + "_pcr_timestamp_acquisition_time", "value"}});
+            {{"endpoint", is.prefix}});
 
-        auto& opcr_timestamp_family =  BuildGauge()
-                                    .Name(is.prefix + "_opcr_timestamp")
-                                    .Help("Display OPCR timestamp for " + is.prefix)
-                                    .Labels({{"label", "value"}})
-                                    .Register(*registry);
         prometheus::Gauge& opcr_timestamp = opcr_timestamp_family.Add(
-            {{is.prefix + "_opcr_timestamp", "value"}});
+            {{"endpoint", is.prefix}});
 
-        auto& opcr_timestamp_acquisition_time_family =  BuildGauge()
-                                    .Name(is.prefix + "_opcr_acquisition_time")
-                                    .Help("Display OPCR Acquisition Time for " + is.prefix)
-                                    .Labels({{"label", "value"}})
-                                    .Register(*registry);
         prometheus::Gauge& opcr_timestamp_acquisition_time = opcr_timestamp_acquisition_time_family.Add(
-            {{is.prefix + "_opcr_timestamp_acquisition_time", "value"}});
+            {{"endpoint", is.prefix}});
 
-        auto& dts_timestamp_family =  BuildGauge()
-                                    .Name(is.prefix + "_dts_timestamp")
-                                    .Help("Display DTS timestamp for "+ is.prefix)
-                                    .Labels({{"label", "value"}})
-                                    .Register(*registry);
         prometheus::Gauge& dts_timestamp = dts_timestamp_family.Add(
-            {{is.prefix + "_dts_timestamp", "value"}});
+            {{"endpoint", is.prefix}});
 
-        auto& dts_timestamp_acquisition_time_family =  BuildGauge()
-                                    .Name(is.prefix + "_dts_acquisition_time")
-                                    .Help("Display DTS Acquisition Time for "+ is.prefix )
-                                    .Labels({{"label", "value"}})
-                                    .Register(*registry);
         prometheus::Gauge& dts_timestamp_acquisition_time = dts_timestamp_acquisition_time_family.Add(
-            {{is.prefix + "_dts_timestamp_acquisition_time", "value"}});
+            {{"endpoint", is.prefix}});
 
-        auto& pts_timestamp_family =  BuildGauge()
-                                    .Name(is.prefix + "_pts_timestamp")
-                                    .Help("Display PTS timestamp for "+ is.prefix)
-                                    .Labels({{"label", "value"}})
-                                    .Register(*registry);
         prometheus::Gauge& pts_timestamp = pts_timestamp_family.Add(
-            {{is.prefix + "_pts_timestamp", "value"}});
+            {{"endpoint", is.prefix}});
 
-        auto& pts_timestamp_acquisition_time_family =  BuildGauge()
-                                    .Name(is.prefix + "_pts_acquisition_time")
-                                    .Help("Display PTS Acquisition Time for "+ is.prefix)
-                                    .Labels({{"label", "value"}})
-                                    .Register(*registry);        
         prometheus::Gauge& pts_timestamp_acquisition_time = pts_timestamp_acquisition_time_family.Add(
-            {{is.prefix + "_pts_timestamp_acquisition_time", "value"}});
+            {{"endpoint", is.prefix}});
 
-
-        auto& t12_timestamp_family =  BuildGauge()
-                                    .Name(is.prefix + "_t12_timestamp")
-                                    .Help("Display T-12 timestamp for " + is.prefix)
-                                    .Labels({{"label", "value"}})
-                                    .Register(*registry);
         prometheus::Gauge& t12_timestamp = t12_timestamp_family.Add(
-            {{is.prefix + "_t12_timestamp", "value"}});
+            {{"endpoint", is.prefix}});
 
-
-        auto& t12_timestamp_acquisition_time_family =  BuildGauge()
-                                    .Name(is.prefix + "_t12_acquisition_time")
-                                    .Help("Display T-12 Acquisition Time for "+ is.prefix)
-                                    .Labels({{"label", "value"}})
-                                    .Register(*registry);
         prometheus::Gauge& t12_timestamp_acquisition_time = t12_timestamp_acquisition_time_family.Add(
-            {{is.prefix + "_t12_timestamp_acquisition_time", "value"}});
+            {{"endpoint", is.prefix}});
         // ask the exposer to scrape the registry on incoming scrapes
         exposer.RegisterCollectable(registry);
         if(verbose)
