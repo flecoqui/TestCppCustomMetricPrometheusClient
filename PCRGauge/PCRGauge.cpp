@@ -67,7 +67,8 @@ public:
 	WORD port;
 	std::string prefix;
 };
-*/
+
+
 class InputStream {
 public:
     InputStream(
@@ -155,16 +156,49 @@ public:
         return _gauge;
     }
 };
+*/
+class InputStream {
+public:
+    InputStream(
+        	std::string _address,
+            WORD _port,
+            std::string _prefix,
+            std::thread *p)
+    {
+	address = _address;
+	port = _port;
+    prefix = _prefix;
+    pThread = p;   
+    }
+    InputStream()
+    {
+	address = std::string("");
+	port = 0;
+	prefix = std::string("");   
+    pThread = nullptr;   
+    }
+    InputStream(const InputStream& i)
+    {
+	address = i.address;
+	port = i.port;
+	prefix = i.prefix; 
+    pThread = nullptr;   
+    }
+	std::string address;
+	WORD port;
+	std::string prefix;
+    std::thread *pThread;
+};
 
-class UDPMulticastReceiver
+class UDPReceiver
 {
 public:
-	UDPMulticastReceiver(void)
+	UDPReceiver(void)
     {
 	m_sock = 0;
 	ErrorCode = 0;
     }
-	~UDPMulticastReceiver(void)
+	~UDPReceiver(void)
     {
 	Unload();
     }
@@ -202,15 +236,13 @@ public:
         {
             if (inet_pton(AF_INET, ip_address_out_bound, &addr) == 1)
             {
-                //			addr.s_addr = inet_addr(ip_address_out_bound);
                 cr = setsockopt(m_sock, IPPROTO_IP, IP_MULTICAST_IF, (char *)&addr, sizeof(addr));
             }
         }
         /*
-        * initialisation de la structure imr
+        * imr structure initialization
         */
 
-        //m_address = inet_addr(ip_address);
         if (inet_pton(AF_INET, ip_address, &m_address) == 1)
         {
             if (IsMulticastAddress(m_address))
@@ -225,7 +257,6 @@ public:
                         closesocket(m_sock);
                         return 0;
                     }
-                    //m_imr.imr_interface.s_addr = inet_addr(ip_address_out_bound);
                 }
                 else
                     m_imr.imr_interface.s_addr = htonl(INADDR_ANY);
@@ -485,7 +516,6 @@ int GetDTSInAdaptationField(LPBYTE Packet, uint64_t* lpDTS)
 						 Offset += 3;
 					 if(Packet[4 + Offset - 1] & 0x20)
 					 {
-//						 uint64_t t = ((Packet[4 + Offset]& 0x0E) << 29)&     0x00000001C0000000;
 						 uint64_t t = Packet[4 + Offset]& 0x0E;
 						 t = (t << 29)&     0x00000001C0000000;
 						 t |=        ((Packet[4 + Offset + 1]& 0xFF) << 22)& 0x000000003FC00000;
@@ -526,9 +556,6 @@ int GetDTSInPES(LPBYTE Packet, uint64_t* lpDTS)
 				{
 					if((Packet[Offset+7]& 0xC0) == 0xC0)
 					{
-						//Packet[Offset+9] // PTS
-						//Packet[Offset+14] // PTS
-//						 uint64_t t = ((Packet[14 + Offset]& 0x0E) << 29)&     0x00000001C0000000;
 						 uint64_t t = Packet[14 + Offset]& 0x0E;
 						 t = (t << 29)&     0x00000001C0000000;
 						 t |=        ((Packet[14 + Offset + 1]& 0xFF) << 22)& 0x000000003FC00000;
@@ -568,9 +595,6 @@ int GetPTSInPES(LPBYTE Packet, uint64_t* lpPTS)
 				{
 					if((Packet[Offset+7]& 0x80) == 0x80)
 					{
-						//Packet[Offset+9] // PTS
-						
-//						 uint64_t t = ((Packet[9 + Offset]& 0x0E) << 29)&     0x00000001C0000000;
 						 uint64_t t = (Packet[9 + Offset]& 0x0E);
 						 t = (t << 29)&     0x00000001C0000000;
 						 t |=        ((Packet[9 + Offset + 1]& 0xFF) << 22)& 0x000000003FC00000;
@@ -611,7 +635,7 @@ void TSThread(prometheus::Gauge& pcr_timestamp,
     if(verbose)
     std::cout << "Prepare TS Stream reception: " << LocalTSAddress <<":" << LocalTSPort <<  std::endl;
 
-    UDPMulticastReceiver Receiver;
+    UDPReceiver Receiver;
     if(Receiver.Load(LocalTSAddress.c_str(),LocalTSPort,buffersize,NULL))
     {
 
@@ -706,8 +730,6 @@ void TSThread(prometheus::Gauge& pcr_timestamp,
 int main(int argc, char* argv[]) {
     using namespace prometheus;
     std::string	LocalPrometheusPort = "8080";
-    std::string  LocalTSAddress = "127.0.0.1";
-    WORD LocalTSPort = 1234;
 	bool verbose = false;
     std::vector<InputStream> InputStreamArray;
     
@@ -752,7 +774,7 @@ int main(int argc, char* argv[]) {
     prometheus::Counter& time_counter = counter_family.Add(
         {{"time_counter", "value"}});                                
 
-    //InputStream is = InputStreamArray[0];
+
     for(InputStream is : InputStreamArray)
     {
         if(verbose)
@@ -845,7 +867,7 @@ int main(int argc, char* argv[]) {
             std::cout << "Preparation of timestamps done for : " << is.address << ":" << is.port << " with prefix: " << is.prefix << std::endl;
 
 
-        std::thread *thts  = new  std::thread (TSThread, std::ref(pcr_timestamp), 
+        is.pThread = new  std::thread (TSThread, std::ref(pcr_timestamp), 
                                     std::ref(pcr_timestamp_acquisition_time),
                                     std::ref(opcr_timestamp), 
                                     std::ref(opcr_timestamp_acquisition_time),
@@ -856,9 +878,6 @@ int main(int argc, char* argv[]) {
                                     std::ref(t12_timestamp), 
                                     std::ref(t12_timestamp_acquisition_time),
                                     is.address, is.port, verbose);
-
-        
-        
     }
 
     for (;;) {
