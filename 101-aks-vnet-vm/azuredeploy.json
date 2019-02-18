@@ -1,0 +1,460 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+          "vmAdminUsername": {
+            "type": "string",
+            "metadata": {
+              "description": "User name for the Virtual Machine."
+            }
+          },
+          "vmAdminPassword": {
+            "type": "securestring",
+            "metadata": {
+              "description": "Password for the Virtual Machine."
+            }
+          },
+          "vmDnsLabelPrefix": {
+            "type": "string",
+            "defaultValue": "winaksvm",
+            "metadata": {
+              "description": "Unique DNS Name for the Public IP used to access the Virtual Machine. DNS name: <dnsLabelPrefix>.<Region>.cloudapp.azure.com"
+            }
+          },
+          "vmOsVersion": {
+            "type": "string",
+            "metadata": {
+              "description": "OS Version - Image SKU"
+            },
+            "defaultValue": "2016-Datacenter",
+            "allowedValues": [
+              "2008-R2-SP1",
+              "2012-Datacenter",
+              "2012-R2-Datacenter",
+              "2016-Datacenter"
+            ]
+          },
+          "vmSize": {
+            "type": "string",
+            "metadata": {
+              "description": "VM Size"
+            },
+            "defaultValue": "Standard_D1_v2"
+          },
+          "vmInitscriptUrl": {
+            "type": "string",
+            "defaultValue": "https://raw.githubusercontent.com/flecoqui/TestCppCustomMetricPrometheusClient/master/101-aks-vnet-vm/install-tsroute.ps1"
+          },
+          "vmInitScriptFileName": {
+            "type": "string",
+            "metadata": {
+              "description": "powershell.exe -ExecutionPolicy Unrestricted -File [initScriptFileName]. Logs in this file /var/lib/waagent/Microsoft.OSTCExtensions.CustomScriptForLinux-1.5.2.0/download/0/stdout"
+            },
+            "defaultValue": "install-tsroute.ps1"
+          },
+        "aksResourceName": {
+            "type": "string",
+            "metadata": {
+                "description": "The name of the Managed Cluster resource."
+            }
+        },
+
+        "aksDnsPrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Optional DNS prefix to use with hosted Kubernetes API server FQDN."
+            }
+        },
+        "aksOsDiskSizeGB": {
+            "defaultValue": 0,
+            "minValue": 0,
+            "maxValue": 1023,
+            "type": "int",
+            "metadata": {
+                "description": "Disk size (in GB) to provision for each of the agent pool nodes. This value ranges from 0 to 1023. Specifying 0 will apply the default disk size for that agentVMSize."
+            }
+        },
+        "aksAgentCount": {
+            "defaultValue": 3,
+            "minValue": 1,
+            "maxValue": 50,
+            "type": "int",
+            "metadata": {
+                "description": "The number of agent nodes for the cluster. Production workloads have a recommended minimum of 3."
+            }
+        },
+        "aksAgentVMSize": {
+            "defaultValue": "Standard_D2_v2",
+            "type": "string",
+            "metadata": {
+                "description": "The size of the Virtual Machine."
+            }
+        },
+        "aksServicePrincipalClientId": {
+            "type": "securestring",
+            "metadata": {
+                "description": "Client ID (used by cloudprovider)"
+            }
+        },
+        "aksServicePrincipalClientSecret": {
+            "type": "securestring",
+            "metadata": {
+                "description": "The Service Principal Client Secret."
+            }
+        },
+        "aksKubernetesVersion": {
+            "defaultValue": "1.11.5",
+            "type": "string",
+            "metadata": {
+                "description": "The version of Kubernetes."
+            }
+        },
+        "aksNetworkPlugin": {
+            "allowedValues": [
+                "azure",
+                "kubenet"
+            ],
+            "defaultValue": "azure",
+            "type": "string",
+            "metadata": {
+                "description": "Network plugin used for building Kubernetes network."
+            }
+        },
+        "aksMaxPods": {
+            "defaultValue": 30,
+            "type": "int",
+            "metadata": {
+                "description": "Maximum number of pods that can run on a node."
+            }
+        },
+        "aksEnableRBAC": {
+            "defaultValue": true,
+            "type": "bool",
+            "metadata": {
+                "description": "boolean flag to turn on and off of RBAC"
+            }
+        }
+    },
+    "variables": {
+        "aksEnableHttpApplicationRouting":false,
+        "aksDnsServiceIP":"10.0.0.10",
+        "aksDockerBridgeCidr":  "172.17.0.1/16",
+
+        "vnetName": "[concat(parameters('vmDnsLabelPrefix'), 'vnet')]",
+        "vnetAddressPrefix": "10.0.0.0/16",
+        "vnetSubnetPrefix": "10.0.0.0/24",
+        "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('vnetName'))]",
+        "vnetSubnetName": "[concat(parameters('vmDnsLabelPrefix'), 'subnet')]",
+        "vnetSubnetRef": "[concat(variables('vnetID'),'/subnets/',variables('vnetSubnetName'))]",
+
+        "publicIPAddressName": "[concat(parameters('vmDnsLabelPrefix'), 'ip')]",
+        "publicIPAddressType": "Dynamic",
+
+        "storageAccountName": "[concat(parameters('vmDnsLabelPrefix'), 'storage')]",
+        "storageAccountType": "Standard_LRS",
+
+        "networkSecurityGroupName": "[concat(parameters('vmDnsLabelPrefix'), 'nsg')]",
+
+        "vmImagePublisher": "MicrosoftWindowsServer", 
+        "vmImageOffer": "WindowsServer", 
+        "vmOSDiskName": "[concat(parameters('vmDnsLabelPrefix'), 'osdisk')]",
+        "vmNicName": "[concat(parameters('vmDnsLabelPrefix'), 'nic')]",
+
+
+        "vmStorageAccountContainerName": "vhds",
+        "vmName": "[concat(parameters('vmDnsLabelPrefix'), 'vm')]",
+
+        "apiVersion": "2015-06-15",
+
+        "vnetSubnetId": "[resourceId(resourceGroup().location,'Microsoft.Network/virtualNetworks/subnets',variables('vnetName'),variables('vnetSubnetName'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "name": "[variables('storageAccountName')]",
+            "apiVersion": "[variables('apiVersion')]",
+            "location": "[resourceGroup().location]",
+            "properties": {
+              "accountType": "[variables('storageAccountType')]"
+            }
+        },
+        { 
+            "apiVersion": "[variables('apiVersion')]", 
+            "type": "Microsoft.Network/networkSecurityGroups", 
+            "name": "[variables('networkSecurityGroupName')]", 
+            "location": "[resourceGroup().location]", 
+            "properties": { 
+              "securityRules": [ 
+                { 
+                  "name": "RDP", 
+                  "properties": { 
+                    "description": "RDP", 
+                    "protocol": "Tcp", 
+                    "sourcePortRange": "*", 
+                    "destinationPortRange": "3389", 
+                    "sourceAddressPrefix": "*", 
+                    "destinationAddressPrefix": "*", 
+                    "access": "Allow", 
+                    "priority": 100, 
+                    "direction": "Inbound" 
+                  } 
+                }, 
+                { 
+                  "name": "http", 
+                  "properties": { 
+                    "description": "http server port", 
+                    "protocol": "Tcp", 
+                    "sourcePortRange": "*", 
+                    "destinationPortRange": "80", 
+                    "sourceAddressPrefix": "Internet", 
+                    "destinationAddressPrefix": "*", 
+                    "access": "Allow", 
+                    "priority": 101, 
+                    "direction": "Inbound" 
+                  } 
+                },
+                { 
+                  "name": "https", 
+                  "properties": { 
+                    "description": "https server port", 
+                    "protocol": "Tcp", 
+                    "sourcePortRange": "*", 
+                    "destinationPortRange": "443", 
+                    "sourceAddressPrefix": "Internet", 
+                    "destinationAddressPrefix": "*", 
+                    "access": "Allow", 
+                    "priority": 102, 
+                    "direction": "Inbound" 
+                  } 
+                },
+                { 
+                  "name": "winrm1", 
+                  "properties": { 
+                    "description": "winrm1 server port", 
+                    "protocol": "Tcp", 
+                    "sourcePortRange": "*", 
+                    "destinationPortRange": "5985", 
+                    "sourceAddressPrefix": "Internet", 
+                    "destinationAddressPrefix": "*", 
+                    "access": "Allow", 
+                    "priority": 103, 
+                    "direction": "Inbound" 
+                  } 
+                },
+                { 
+                  "name": "winrm2", 
+                  "properties": { 
+                    "description": "winrm2 server port", 
+                    "protocol": "Tcp", 
+                    "sourcePortRange": "*", 
+                    "destinationPortRange": "5986", 
+                    "sourceAddressPrefix": "Internet", 
+                    "destinationAddressPrefix": "*", 
+                    "access": "Allow", 
+                    "priority": 104, 
+                    "direction": "Inbound" 
+                  } 
+                }            
+              ] 
+            } 
+          },     
+         {
+           "apiVersion": "[variables('apiVersion')]",
+           "type": "Microsoft.Network/publicIPAddresses",
+           "name": "[variables('publicIPAddressName')]",
+           "location": "[resourceGroup().location]",
+           "properties": {
+             "publicIPAllocationMethod": "[variables('publicIPAddressType')]",
+             "dnsSettings": {
+               "domainNameLabel": "[parameters('vmDnsLabelPrefix')]"
+             }
+           }
+         },
+         {
+           "apiVersion": "[variables('apiVersion')]",
+           "type": "Microsoft.Network/virtualNetworks",
+           "name": "[variables('vnetName')]",
+           "location": "[resourceGroup().location]",
+           "dependsOn": [ 
+          "[concat('Microsoft.Network/networkSecurityGroups/', variables('networkSecurityGroupName'))]" 
+            ], 
+           "properties": {
+             "addressSpace": {
+               "addressPrefixes": [
+                 "[variables('vnetAddressPrefix')]"
+               ]
+             },
+             "subnets": [
+               {
+                 "name": "[variables('vnetSubnetName')]",
+                 "properties": {
+                 "addressPrefix": "[variables('vnetSubnetPrefix')]",
+                 "networkSecurityGroup": { 
+                      "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]" 
+                    }               
+                 }
+               }
+             ]
+           }
+         },
+         {
+           "apiVersion": "[variables('apiVersion')]",
+           "type": "Microsoft.Network/networkInterfaces",
+           "name": "[variables('vmNicName')]",
+           "location": "[resourceGroup().location]",
+           "dependsOn": [
+             "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
+             "[concat('Microsoft.Network/virtualNetworks/', variables('vnetName'))]"
+           ],
+           "properties": {
+             "ipConfigurations": [
+               {
+                 "name": "ipconfig1",
+                 "properties": {
+                   "privateIPAllocationMethod": "Dynamic",
+                   "publicIPAddress": {
+                     "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+                   },
+                   "subnet": {
+                     "id": "[variables('vnetSubnetRef')]"
+                   }
+                 }
+               }
+             ]
+           }
+         },
+
+         {
+            "apiVersion": "[variables('apiVersion')]",
+            "type": "Microsoft.Compute/virtualMachines",
+            "name": "[variables('vmName')]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+              "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
+              "[concat('Microsoft.Network/networkInterfaces/', variables('vmNicName'))]"
+            ],
+            "properties": {
+              "hardwareProfile": {
+                "vmSize": "[parameters('vmSize')]"
+              },
+              "osProfile": {
+                "computerName": "[variables('vmName')]",
+                "adminUsername": "[parameters('vmAdminUsername')]",
+                "adminPassword": "[parameters('vmAdminPassword')]"
+              },
+              "storageProfile": {
+                "imageReference": {
+                  "publisher": "[variables('vmImagePublisher')]",
+                  "offer": "[variables('vmImageOffer')]",
+                  "sku": "[parameters('vmOsVersion')]",
+                  "version": "latest"
+                },
+                "osDisk": {
+                  "name": "osdisk",
+                  "vhd": {
+                    "uri": "[concat('http://',variables('storageAccountName'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('vmOSDiskName'),'.vhd')]"
+                  },
+                  "caching": "ReadWrite",
+                  "createOption": "FromImage"
+                }
+              },
+              "networkProfile": {
+                "networkInterfaces": [
+                  {
+                    "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('vmNicName'))]"
+                  }
+                ]
+              },
+              "diagnosticsProfile": {
+                "bootDiagnostics": {
+                  "enabled": "true",
+                  "storageUri": "[concat('http://',variables('storageAccountName'),'.blob.core.windows.net')]"
+                }
+              }
+            },
+            "resources": [
+              {
+             "name": "init",
+             "type": "extensions", 
+                "location": "[resourceGroup().location]",
+                "apiVersion": "2015-06-15",
+                "dependsOn": [
+                  "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'))]",
+                  "[resourceId('Microsoft.Compute/virtualMachines/extensions',  variables('vmName'), 'dsc')]" 
+                ],
+                "tags": {
+                  "displayName": "init"
+                },
+                "properties": {
+                  "publisher": "Microsoft.Compute",
+                  "type": "CustomScriptExtension",
+                  "typeHandlerVersion": "1.7",
+                  "autoUpgradeMinorVersion": true,
+                  "settings": {
+                    "fileUris": [
+                      "[parameters('vmInitscriptUrl')]"
+                    ],
+                    "commandToExecute": "[concat('powershell.exe -ExecutionPolicy Unrestricted -File ', parameters('vmInitScriptFileName'),' \"',  parameters('vmDnsLabelPrefix'), '.', resourceGroup().location, '.cloudapp.azure.com','\" ')]"
+                  }
+                }
+             }                 
+            ]
+          },    
+        {
+            "type": "Microsoft.ContainerService/managedClusters",
+            "name": "[parameters('aksResourceName')]",
+            "apiVersion": "2018-03-31",
+            "location": "[resourceGroup().location]",
+            "tags": {},
+            "dependsOn": [
+                "[concat('Microsoft.Network/virtualNetworks/', variables('vnetName'))]"
+            ],
+            "properties": {
+                "kubernetesVersion": "[parameters('aksKubernetesVersion')]",
+                "enableRBAC": "[parameters('aksEnableRBAC')]",
+                "dnsPrefix": "[parameters('aksDnsPrefix')]",
+                "addonProfiles": {
+                    "httpApplicationRouting": {
+                        "enabled": "[variables('aksEnableHttpApplicationRouting')]"
+                    }
+                },
+                "agentPoolProfiles": [
+                    {
+                        "name": "agentpool",
+                        "osDiskSizeGB": "[parameters('aksOsDiskSizeGB')]",
+                        "count": "[parameters('aksAgentCount')]",
+                        "vmSize": "[parameters('aksAgentVMSize')]",
+                        "osType": "Linux",
+                        "storageProfile": "ManagedDisks",
+                        "vnetSubnetID": "[variables('vnetSubnetID')]",
+                        "maxPods": "[parameters('aksMaxPods')]"
+                    }
+                ],
+                "servicePrincipalProfile": {
+                    "clientId": "[parameters('aksServicePrincipalClientId')]",
+                    "secret": "[parameters('aksServicePrincipalClientSecret')]"
+                },
+                "networkProfile": {
+                    "networkPlugin": "[parameters('aksNetworkPlugin')]",
+                    "serviceCidr": "[variables('vnetAddressPrefix')]",
+                    "dnsServiceIP": "[variables('aksDnsServiceIP')]",
+                    "dockerBridgeCidr": "[variables('aksDockerBridgeCidr')]"
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "akscontrolPlaneFQDN": {
+            "type": "string",
+            "value": "[reference(concat('Microsoft.ContainerService/managedClusters/', parameters('aksResourceName'))).fqdn]"
+        },
+        "vmhostname": {
+        "type": "string",
+        "value": "[concat(parameters('vmDnsLabelPrefix'), '.', resourceGroup().location, '.cloudapp.azure.com')]"
+        },
+        "vmmstscCommand": {
+        "type": "string",
+        "value": "[concat('mstsc /admin /v:', parameters('vmDnsLabelPrefix'), '.', resourceGroup().location, '.cloudapp.azure.com')]"
+        }
+    }
+}

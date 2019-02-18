@@ -1,0 +1,60 @@
+    {
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "vmAdminUsername": {
+            "value": "VMAdmin"
+          },
+          "vmAdminPassword": {
+            "value": "VMP@ssw0rd"
+          },
+          "vmDnsLabelPrefix": {
+            "value": "aksvmname"
+          },
+          "vmSize": {
+            "value": "Standard_D2_v2"
+          },
+          "vmOsVersion": {
+            "value": "2016-Datacenter"
+          },
+          "vmInitscriptUrl": {
+            "value": "https://raw.githubusercontent.com/flecoqui/TestCppCustomMetricPrometheusClient/master/101-aks-vnet-vm/install-astool.ps1"
+          },
+          "vmInitScriptFileName": {
+            "value": "install-astool.ps1"
+          },        
+        "aksResourceName": {
+            "value": "akstest"
+        },
+        "aksDnsPrefix": {
+            "value": "aksvnetvm"
+        },
+        "aksOsDiskSizeGB": {
+            "value": 0
+        },
+        "aksAgentCount": {
+            "value": 1
+        },
+        "aksAgentVMSize": {
+            "value": "Standard_D2_v2"
+        },
+        "aksServicePrincipalClientId": {
+            "value": "GEN-GUID"
+        },
+        "aksServicePrincipalClientSecret": {
+            "value": "GEN-PASSWORD"
+        },
+        "aksKubernetesVersion": {
+            "value": "1.11.5"
+        },
+        "aksNetworkPlugin": {
+            "value": "azure"
+        },
+        "aksMaxPods": {
+            "value": 30
+        },
+        "aksEnableRBAC": {
+            "value": true
+        }
+    }
+}

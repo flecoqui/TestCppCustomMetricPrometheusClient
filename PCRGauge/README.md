@@ -1,5 +1,179 @@
 # Custom Prometheus Metric PCR Gauge
 This sample application implements a sample PCR Gauge based on a Custom Prometheus Metric running in Container in Azure Kubernetes Service.
+You'll find below all the steps required to test this component.
+
+
+## Getting the Azure Subscription 
+First you need an Azure subscription.
+You can subscribe here:  https://azure.microsoft.com/en-us/free/ . </p>
+
+## Installing Azure CLI v2 on Windows
+Moreover, we will use Azure CLI v2.0 to deploy the resources in Azure.
+You can install Azure CLI on your machine running Linux, MacOS or Windows from here: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest 
+
+Once, Azure CLI v2 is installed on your machine, you can check the version of Azure CLI installed
+
+1. Open a command shell window on your machine  
+
+
+        C:\users\me>  
+
+2. Launch the following command to get the current version of Azure CLI:
+
+        C:\users\me> az --version 
+
+
+
+You can get further information about Azure Kubernetes Service here: https://docs.microsoft.com/fr-fr/azure/aks/kubernetes-walkthrough .</p>
+You can check the sample application here: https://github.com/Azure-Samples/azure-voting-app-redis
+
+## Installing Kubectl on Windows
+Now as Azure CLI is installed, you can install Kubernetes Command Line Client Kubectl on your machine.
+Use the following Azure CLI command to install the Kubernetes Command Line Client:
+**Azure CLI 2.0:** az aks install-cli </p>
+
+
+1. Run the following command:  
+
+        C:\users\me>  az aks install-cli
+
+2. Launch the following command to get the current version of kubectl on your machine:
+
+        C:\users\me>  kubectl version 
+
+
+
+## Installing Helm on Windows 
+In order to deploy Prometheus and Grafana on your AKS (Azure Kubernetes Service) cluster, you need to install HELM on your machine.
+
+1. Download this version of Helm for Windows:
+https://storage.googleapis.com/kubernetes-helm/helm-v2.12.2-windows-amd64.zip
+2. Unzip the zip file, you should see the two files helm.exe and tiller.exe on the hard drive of your machine.
+3. Go to Control Panel --> System.
+4. Click Advanced system settings.
+5. Select Advanced tab and click Environment Variables.
+6. In the System Variables area, locate the Path variable, highlight it and click Edit...
+7. Click New, and add the path of the folder which contains helm.exe and tiller.exe
+8. Click OK , OK , OK.
+
+## Deploying an AKS Cluster 
+
+### Creating an Azure Container Registry
+Before deploying your containers in Azure you need to create an Azure Container Registry where you'll store the images associated with your containers.
+
+
+1. Open a command shell window  
+
+        C:\users\me> 
+
+2. Create a resource group with Azure CLI using the following command:</p>
+**Azure CLI 2.0:** az group create --resource-group "ResourceGroupName" --location "RegionName"</p>
+For instance:
+
+
+        C:\users\me> az group create --resource-group acrrg --location eastus2
+
+3. Create an Azure Container Registry with Azure CLI using the following command:</p>
+**Azure CLI 2.0:** az acr create --resource-group "ResourceGroupName" --name "ACRName" --sku "ACRSku" --location "RegionName"</p>
+For instance:
+
+        C:\users\me> az acr create --resource-group acrrg --name acreu2  --sku Standard --location eastus2  
+
+
+Your Azure Container Registry is now deployed.
+
+### Creating an AKS Cluster
+Now, your Azure Container Registry is installed, you can deploy your AKS cluster.</p>
+You'll find further information here:</p>
+https://docs.microsoft.com/fr-fr/azure/aks/tutorial-kubernetes-deploy-cluster 
+
+
+#### CREATING SERVICE PRINCIPAL FOR AKS DEPLOYMENT
+
+1. With Azure CLI create an Service Principal:
+**Azure CLI 2.0:** az ad sp create-for-rbac --skip-assignment </p>
+For instance:
+
+
+          C:\users\me> az ad sp create-for-rbac --skip-assignment
+ 
+      The command returns the following information associated with the new Service Principal:
+      - appID
+      - displayName
+      - name
+      - password
+      - tenant
+
+     For instance:
+
+
+          AppId                                 Password                            
+          ------------------------------------  ------------------------------------
+          d604dc61-d8c0-41e2-803e-443415a62825  097df367-7472-4c23-96e1-9722e1d8270a
+
+
+
+2. Display the ID associated with the new Azure Container Registry using the following command:</p>
+In order to allow the Service Principal to have access to the Azure Container Registry you need to display the ACR resource ID with the following command:</p>
+**Azure CLI 2.0:** az acr show --name "ACRName" --query id --output tsv</p>
+For instance:
+
+
+        C:\users\me> az acr show --name acreu2 --query id --output tsv
+
+     The command returns ACR resource ID.
+
+     For instance:
+
+        /subscriptions/e5c9fc83-fbd0-4368-9cb6-1b5823479b6d/resourceGroups/acrrg/providers/Microsoft.ContainerRegistry/registries/acreu2
+
+
+3. Allow the Service Principal to have access to the Azure Container Registry with the following command:</p>
+**Azure CLI 2.0:** az role assignment create --assignee "AppID" --scope "ACRReourceID" --role Reader
+ For instance:
+
+        C:\users\me> az role assignment create --assignee d604dc61-d8c0-41e2-803e-443415a62825 --scope /subscriptions/e5c9fc83-fbd0-4368-9cb6-1b5823479b6d/resourceGroups/acrrg/providers/Microsoft.ContainerRegistry/registries/acreu2 --role Reader
+
+
+#### CREATING A KUBERNETES CLUSTER
+Now you can create the Kubernetes Cluster in Azure. </p>
+
+
+1. With the following Azure CLI command create the Azure Kubernetes Cluster:</p>
+**Azure CLI 2.0:** az aks create --resource-group "ResourceGroupName" --name "AKSClusterName" --node-count 1 --service-principal "SPAppID" --client-secret "SPPassword" --generate-ssh-keys </p>
+
+     For instance:
+
+
+        az aks create --resource-group acrrg --name netcoreakscluster --node-count 1 --service-principal d604dc61-d8c0-41e2-803e-443415a62825   --client-secret 097df367-7472-4c23-96e1-9722e1d8270a --generate-ssh-keys
+
+ 
+2. After few minutes, the Cluster is deployed. To connect to the cluster from your local computer, you use the Kubernetes Command Line Client. Use the following Azure CLI command to install the Kubernetes Command Line Client:
+**Azure CLI 2.0:** az aks install-cli </p>
+
+
+3. Connect the Kubernetes Command Line Client to your Cluster in Azure using the following Azure CLI command:
+**Azure CLI 2.0:** az aks get-credentials --resource-group "ResourceGroupName" --name "AKSClusterName" </p>
+
+     For instance:
+
+        az aks get-credentials --resource-group acrrg --name netcoreakscluster
+
+
+4. Check the connection from the Kubernetes Command Line Client with the following command:
+**kubectl:** kubectl get nodes
+
+     The commmand will return information about the Kuberentes nodes.
+     For instance:
+
+        NAME                       STATUS    ROLES     AGE       VERSION
+        aks-nodepool1-38201324-0   Ready     agent     16m       v1.9.11
+
+     You are now connected to your cluster from your local machine.
+
+## Deploying a Virtual Machine connected with the AKS Cluster through a VNET
+
+## Deploying Prometeus on the AKS Cluster 
 
 
 ## Using the Application
