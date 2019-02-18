@@ -103,7 +103,7 @@
             }
         },
         "aksKubernetesVersion": {
-            "defaultValue": "1.11.5",
+            "defaultValue": "1.10.12",
             "type": "string",
             "metadata": {
                 "description": "The version of Kubernetes."
@@ -137,15 +137,19 @@
     },
     "variables": {
         "aksEnableHttpApplicationRouting":false,
+        "aksServiceCidr": "10.0.0.0/16",
         "aksDnsServiceIP":"10.0.0.10",
         "aksDockerBridgeCidr":  "172.17.0.1/16",
 
         "vnetName": "[concat(parameters('vmDnsLabelPrefix'), 'vnet')]",
-        "vnetAddressPrefix": "10.0.0.0/16",
-        "vnetSubnetPrefix": "10.0.0.0/24",
+        "vnetAddressPrefix": "10.201.0.0/16",
+        "vnetVMSubnetPrefix": "10.201.0.0/24",
+        "vnetAKSSubnetPrefix": "10.201.1.0/24",
         "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('vnetName'))]",
-        "vnetSubnetName": "[concat(parameters('vmDnsLabelPrefix'), 'subnet')]",
-        "vnetSubnetRef": "[concat(variables('vnetID'),'/subnets/',variables('vnetSubnetName'))]",
+        "vnetVMSubnetName": "[concat(parameters('vmDnsLabelPrefix'), 'vmsubnet')]",
+        "vnetVMSubnetRef": "[concat(variables('vnetID'),'/subnets/',variables('vnetVMSubnetName'))]",
+        "vnetAKSSubnetName": "[concat(parameters('vmDnsLabelPrefix'), 'akssubnet')]",
+        "vnetAKSSubnetRef": "[concat(variables('vnetID'),'/subnets/',variables('vnetAKSSubnetName'))]",
 
         "publicIPAddressName": "[concat(parameters('vmDnsLabelPrefix'), 'ip')]",
         "publicIPAddressType": "Dynamic",
@@ -166,7 +170,7 @@
 
         "apiVersion": "2015-06-15",
 
-        "vnetSubnetId": "[resourceId(resourceGroup().location,'Microsoft.Network/virtualNetworks/subnets',variables('vnetName'),variables('vnetSubnetName'))]"
+        "vnetAKSSubnetID": "[resourceId(resourceGroup().name,'Microsoft.Network/virtualNetworks/subnets',variables('vnetName'),variables('vnetAKSSubnetName'))]"
     },
     "resources": [
         {
@@ -286,14 +290,23 @@
              },
              "subnets": [
                {
-                 "name": "[variables('vnetSubnetName')]",
+                 "name": "[variables('vnetVMSubnetName')]",
                  "properties": {
-                 "addressPrefix": "[variables('vnetSubnetPrefix')]",
+                 "addressPrefix": "[variables('vnetVMSubnetPrefix')]",
                  "networkSecurityGroup": { 
                       "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]" 
                     }               
                  }
-               }
+               },
+               {
+                "name": "[variables('vnetAKSSubnetName')]",
+                "properties": {
+                "addressPrefix": "[variables('vnetAKSSubnetPrefix')]",
+                "networkSecurityGroup": { 
+                     "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]" 
+                   }               
+                }
+              }
              ]
            }
          },
@@ -316,7 +329,7 @@
                      "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
                    },
                    "subnet": {
-                     "id": "[variables('vnetSubnetRef')]"
+                     "id": "[variables('vnetVMSubnetRef')]"
                    }
                  }
                }
@@ -379,8 +392,7 @@
                 "location": "[resourceGroup().location]",
                 "apiVersion": "2015-06-15",
                 "dependsOn": [
-                  "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'))]",
-                  "[resourceId('Microsoft.Compute/virtualMachines/extensions',  variables('vmName'), 'dsc')]" 
+                  "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'))]"
                 ],
                 "tags": {
                   "displayName": "init"
@@ -426,7 +438,7 @@
                         "vmSize": "[parameters('aksAgentVMSize')]",
                         "osType": "Linux",
                         "storageProfile": "ManagedDisks",
-                        "vnetSubnetID": "[variables('vnetSubnetID')]",
+                        "vnetSubnetID": "[variables('vnetAKSSubnetID')]",
                         "maxPods": "[parameters('aksMaxPods')]"
                     }
                 ],
@@ -436,12 +448,12 @@
                 },
                 "networkProfile": {
                     "networkPlugin": "[parameters('aksNetworkPlugin')]",
-                    "serviceCidr": "[variables('vnetAddressPrefix')]",
+                    "serviceCidr": "[variables('aksServiceCidr')]",
                     "dnsServiceIP": "[variables('aksDnsServiceIP')]",
                     "dockerBridgeCidr": "[variables('aksDockerBridgeCidr')]"
                 }
             }
-        }
+        }     
     ],
     "outputs": {
         "akscontrolPlaneFQDN": {

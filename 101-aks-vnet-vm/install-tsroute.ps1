@@ -25,7 +25,8 @@ if(!$dnsName) {
 }
 
  WriteLog "Downloading tsroute"  
- $url = 'https://github.com/flecoqui/Win32/blob/master/TSRoute/Releases/ReleasesWithTSFiles.zip' 
+ [Net.ServicePointManager]::SecurityProtocol = "tls12, tls11, tls"
+ $url = 'https://github.com/flecoqui/Win32/raw/master/TSRoute/Releases/ReleasesWithTSFiles.zip' 
  $webClient = New-Object System.Net.WebClient  
  $webClient.DownloadFile($url,$source + "\ReleasesWithTSFiles.zip" )  
  
@@ -34,6 +35,7 @@ if(!$dnsName) {
  # Function to unzip file contents 
  function Expand-ZIPFile($file, $destination) 
  { 
+
      $shell = new-object -com shell.application 
      $zip = $shell.NameSpace($file) 
      foreach($item in $zip.items()) 
@@ -42,7 +44,7 @@ if(!$dnsName) {
          $shell.Namespace($destination).copyhere($item, 0x14) 
      } 
  } 
-Expand-ZIPFile -file "$source\ReleasesWithTSFiles.zip" -destination $source 
+Expand-ZIPFile -file "$source\ReleasesWithTSFiles.zip" -destination "$source" 
 WriteLog "TSRoute Installed"  
 
 
@@ -79,13 +81,15 @@ $content = @'
   </Stream>
 </TSROUTE.InputParameters>
 '@
-$content | Out-File -FilePath C:\tsroute\ReleasesWithTSFiles\tsstreams.xml -Encoding utf8
+$content | Out-File -FilePath C:\tsroute\ReleasesWithTSFiles\tsstream.xml -Encoding utf8
 WriteLog "Creating TSRoute Config file done" 
 
 WriteLog "Installing TSRoute as a service" 
 C:\tsroute\ReleasesWithTSFiles\tsroute.exe -install -xmlfile C:\tsroute\ReleasesWithTSFiles\tsstream.xml 
 WriteLog "TSRoute Installed" 
+C:\tsroute\ReleasesWithTSFiles\tsroute.exe -start
+WriteLog "TSRoute Started" 
 
 WriteLog "Initialization completed !" 
-WriteLog "Rebooting !" 
-Restart-Computer -Force       
+#WriteLog "Rebooting !" 
+#Restart-Computer -Force       

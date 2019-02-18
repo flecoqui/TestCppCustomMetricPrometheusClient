@@ -18,10 +18,10 @@
             "value": "2016-Datacenter"
           },
           "vmInitscriptUrl": {
-            "value": "https://raw.githubusercontent.com/flecoqui/TestCppCustomMetricPrometheusClient/master/101-aks-vnet-vm/install-astool.ps1"
+            "value": "https://raw.githubusercontent.com/flecoqui/TestCppCustomMetricPrometheusClient/master/101-aks-vnet-vm/install-tsroute.ps1"
           },
           "vmInitScriptFileName": {
-            "value": "install-astool.ps1"
+            "value": "install-tsroute.ps1"
           },        
         "aksResourceName": {
             "value": "akstest"
@@ -39,13 +39,13 @@
             "value": "Standard_D2_v2"
         },
         "aksServicePrincipalClientId": {
-            "value": "GEN-GUID"
+            "value": "bd28006a-272c-43a5-bd80-5bafc49e9144"
         },
         "aksServicePrincipalClientSecret": {
-            "value": "GEN-PASSWORD"
+            "value": "a27ed361-59db-46d5-b91f-fc6c5c45e43e"
         },
         "aksKubernetesVersion": {
-            "value": "1.11.5"
+            "value": "1.10.12"
         },
         "aksNetworkPlugin": {
             "value": "azure"
