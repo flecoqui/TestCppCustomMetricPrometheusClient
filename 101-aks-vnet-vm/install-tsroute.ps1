@@ -73,8 +73,8 @@ $content = @'
     <OutputFile>Stream1.xml</OutputFile>
     <RefreshPeriod>5</RefreshPeriod>
     <TSFile>C:\tsroute\ReleasesWithTSFiles\TEST1.TS</TSFile>
-    <UdpIpAddress>239.1.1.1</UdpIpAddress>
-    <UdpPort>2501</UdpPort>
+    <UdpIpAddress>10.201.1.23</UdpIpAddress>
+    <UdpPort>1234</UdpPort>
     <TTL>2</TTL>
     <Loop>-1</Loop>
     <UpdateTimeStamp>1</UpdateTimeStamp>
