@@ -1,4 +1,4 @@
-# Custom Prometheus Metrics PCR Gauge
+# Custom Prometheus Metrics PCR Gauge in AKS
 This github repository contains:
 - [A Sample application](https://github.com/flecoqui/TestCppCustomMetricPrometheusClient/tree/master/PCRGauge) which implements a  PCR Gauge based on a Custom Prometheus Metric running in Container in Azure Kubernetes Service;
 - [An ARM Template](https://github.com/flecoqui/TestCppCustomMetricPrometheusClient/tree/master/101-aks-vnet-vm) to deploy in the same Azure Resource Group a Virtual Machine used to stream the MPEG2-TS Stream and an AKS Cluster running the prometeus components and the PCR Gauge container which will consume the MPEG2-TS stream to extract the PCR.
@@ -239,6 +239,37 @@ If after your tests, you want to remove the AKS Cluster and the Virtual Machine 
      For instance:
 
             az group delete -n aksvnetvmrg
+
+##### KUBENET AKS NETWORK PLUGIN SPECIFIC INSTALLATION STEP
+If you select kubenet network plugin instead of the azure network plugin for the deployment of your AKS Cluster, you need to complete the installation with a specific configuration step which consists in linking the Route Table deployed in the AKS Cluster with the 2 subnet in the depployed VNET.
+
+
+1. In the resource group associated with your AKS Cluster whose name start with "MC_", select the Route Table:
+
+<img src="Docs/selectroutetable.png" width="800">
+
+
+2. You can check there is no subnet associated with this Route Table
+
+<img src="Docs/nosubnetroutetable.png" width="800">
+
+3. Associate this Route Table with the new Subnets (VM Subnet and AKS Subnet)
+
+<img src="Docs/routetableassociate.png" width="800">
+
+
+4. Associate the Route Table with the AKS Subnet
+
+<img src="Docs/routetableselectakssubnet.png" width="800">
+
+5. Associate the Route Table with the VM Subnet
+
+<img src="Docs/routetableselectvmsubnet.png" width="800">
+
+
+6. Now the Route Table is associated with both subnet, the connection between the Virtual Machine and the pod running PCR Gauge should be possible  
+
+<img src="Docs/routetableselectakssubnetvmsubnet.png" width="800">
 
 
 ##### CREATING ONLY THE KUBERNETES CLUSTER WITHOUT VIRTUAL MACHINE TO STREAM CONTENT TOWARDS THE CLUSTER
@@ -498,7 +529,7 @@ The yaml file used to deploy the solution on AKS:
 Use the following kubectl command line to check if the PCRGauge container is running :
 
 
-            kubectl get pods -n monitoring -o wide
+            C:\git\me\TestCppCustomMetricPrometheusClient\PCRGauge> kubectl get pods -n monitoring -o wide
 
 
 You should see pcrgauge in the list of pods running:  
@@ -536,12 +567,7 @@ With this kubectl command line, you can get the IP address of the PCRGauge pod.
 
 6. Save the file tsstream.xml .
 
-<img src="Docs/tsstreamsave.png" width="600">
-
-6. Start the service MPEG2-TS Router
-
-<img src="Docs/servicestart.png" width="600">
-
+<img src="Docs/tsstreamsave.png" width="400">
 
 7. Start the service MPEG2-TS Router
 
@@ -551,19 +577,70 @@ With this kubectl command line, you can get the IP address of the PCRGauge pod.
 
 <img src="Docs/servicecheck.png" width="600">
 
+9. From the Virtual Machine using the browser, you can retrieve the counter information from the PCRGauge running in AKS. You need to open the following url:  http://<IPAddress of PCRGauge pod>:8080/metrics
+
+<img src="Docs/metricsfromvm.png" width="800">
+
+
+### Checking the counter values with kubectl
+Now your PCRGauge should receive the MPEG2-TS stream and retrieve the PCR Time stamps. 
+
+1. Use the following command to retrive the counter information using an http request:
+kubectl exec "PCRGaugePodName" -n monitoring -- curl http://127.0.0.1:8080/metrics
+
+For instance:
+
+            C:\git\me\TestCppCustomMetricPrometheusClient\PCRGauge> kubectl exec pcrgauge-c58fdc84b-p49b4 -n monitoring -- curl http://127.0.0.1:8080/metrics
+
+2. The result should be displayed: 
+
+<img src="Docs/metricsfromcontainer.png" width="800">
 
 
 ### Checking if the Custom Metric is visible with kubectl
 Now your PCRGauge should receive the MPEG2-TS stream and retrieve the PCR Time stamps. 
-We 
  
-Use the following command:
+1. Use the following command to open the portal the browser installed on your machine:
 
-    kubectl port-forward -n monitoring prometheus-prometheus-operator-prometheus-0 9090
 
-### Checking the counter values with kubectl
+            C:\git\me\TestCppCustomMetricPrometheusClient\PCRGauge> kubectl port-forward -n monitoring prometheus-prometheus-operator-prometheus-0 9090
 
-Use the following command:
 
-    kubectl exec pcrgauge-c58fdc84b-p49b4 -n monitoring -- curl http://127.0.0.1:8080/metrics
+2. Open the url http://127.0.0.1:9090/graph with the browser on your machine.
 
+<img src="Docs/prometheus1.png" width="600">
+
+
+3. Select Status -> Service Discovery menu
+
+<img src="Docs/prometheus2.png" width="600">
+
+
+4. The Service Discovery Page should display monitoring/pcrgauge/0 counter.
+
+<img src="Docs/prometheus3.png" width="600">
+
+5. Select Status -> Targets menu
+
+<img src="Docs/prometheus4.png" width="600">
+
+6. The Targets page should contain information about PCRGauge
+
+<img src="Docs/prometheus5.png" width="600">
+
+7. Select the Prometheus home page and select the counter pcr_timestamp
+
+<img src="Docs/prometheus6.png" width="600">
+
+
+8. The Graph property page should display the pcr_timestamp
+
+<img src="Docs/prometheus7.png" width="600">
+
+## Next steps
+
+1. Port TSRoute on Linux.  
+Source code for the version of TSRoute running on Windows:
+https://github.com/flecoqui/Win32/tree/master/TSRoute 
+
+2. More advanced automated deployement using a Virtual Machine to deploy the solution with one single script and one single ARM Template
