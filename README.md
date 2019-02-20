@@ -36,10 +36,6 @@ Once, Azure CLI v2 is installed on your machine, you can check the version of Az
             C:\users\me> az --version 
 
 
-
-You can get further information about Azure Kubernetes Service here: https://docs.microsoft.com/fr-fr/azure/aks/kubernetes-walkthrough .</p>
-You can check the sample application here: https://github.com/Azure-Samples/azure-voting-app-redis
-
 ## Installing Kubectl on Windows
 Now as Azure CLI is installed, you can install Kubernetes Command Line Client Kubectl on your machine.
 Use the following Azure CLI command to install the Kubernetes Command Line Client:
@@ -55,7 +51,6 @@ Use the following Azure CLI command to install the Kubernetes Command Line Clien
         C:\users\me>  kubectl version 
 
 
-
 ## Installing Helm on Windows 
 In order to deploy Prometheus and Grafana on your AKS (Azure Kubernetes Service) cluster, you need to install HELM on your machine.
 
@@ -69,7 +64,14 @@ https://storage.googleapis.com/kubernetes-helm/helm-v2.12.2-windows-amd64.zip
 7. Click New, and add the path of the folder which contains helm.exe and tiller.exe
 8. Click OK , OK , OK.
 
-## Deploying an AKS Cluster 
+## Deploying the solution on an AKS Cluster 
+In order to deploy the solution on a new AKS (Azure Container Service) Cluster, you'll need to: </p> 
+1. Create an Azure Container Registry
+2. Create an Azure Kubernetes Cluster
+
+The Azure Container Registry will be used to host the image of the PCR Gauge based on a Custom Prometheus Metric.
+If you are interested, you can get further information about Azure Kubernetes Service here: https://docs.microsoft.com/fr-fr/azure/aks/kubernetes-walkthrough .</p>
+You can check the sample application here: https://github.com/Azure-Samples/azure-voting-app-redis
 
 ### Creating an Azure Container Registry
 Before deploying your containers in Azure you need to create an Azure Container Registry where you'll store the images associated with your containers.
@@ -95,7 +97,7 @@ For instance:
 
 Your Azure Container Registry is now deployed.
 
-### Creating an AKS Cluster
+### Creating the AKS Cluster
 Now, your Azure Container Registry is installed, you can deploy your AKS cluster.</p>
 You'll find further information here:</p>
 https://docs.microsoft.com/fr-fr/azure/aks/tutorial-kubernetes-deploy-cluster 
@@ -148,17 +150,91 @@ For instance:
         C:\users\me> az role assignment create --assignee d604dc61-d8c0-41e2-803e-443415a62825 --scope /subscriptions/e5c9fc83-fbd0-4368-9cb6-1b5823479b6d/resourceGroups/acrrg/providers/Microsoft.ContainerRegistry/registries/acreu2 --role Reader
 
 
-#### CREATING A KUBERNETES CLUSTER
+#### CREATING THE KUBERNETES CLUSTER
 Now you can create the Kubernetes Cluster in Azure. </p>
 
-
-az group create -n aksvnetvmrg -l eastus2
-
-az group deployment create -g aksvnetvmrg -n aksvnetvmtest --template-file azuredeploy.json --parameter @azuredeploy.parameters.json --verbose -o json
-
-az group delete -n aksvnetvmrg
+##### CREATING THE KUBERNETES CLUSTER WITH THE VIRTUAL MACHINE TO STREAM CONTENT TOWARDS THE CLUSTER
 
 
+1. Open a command shell window on your machine and navigate to the folder containing your local git repository  
+
+            C:\git\me>   
+
+2. Clone the current repository on your machine   
+
+            C:\git\me> git clone https://github.com/flecoqui/TestCppCustomMetricPrometheusClient.git    
+
+3. Change directory to the ARM template folder   
+
+            C:\git\me\TestCppCustomMetricPrometheusClient\101-aks-vnet-vm> 
+
+
+4. With the following Azure CLI command create the resource group for the Azure Kubernetes Cluster:</p>
+**Azure CLI 2.0:** az group create -n "ResourceGroupName" -l "Location"</p>
+
+     For instance:
+
+
+            C:\git\me\TestCppCustomMetricPrometheusClient\101-aks-vnet-vm> az group create -n aksvnetvmrg -l eastus2
+
+
+5. kqsjlkdlskdj
+
+
+
+| Attribute name | value type | default value | Description | 
+| :--- | :--- | :--- |  :--- | 
+|vmAdminUsername| string | null | Virtual Machine Login Name |
+|vmAdminPassword| securestring | null | Virtual Machine Login Password |
+|vmDnsLabelPrefix| string | winaksvm | Unique DNS Name for the Public IP used to access the Virtual Machine dnsLabelPrefix.Region.cloudapp.azure.com |
+|vmSize| string | Standard_D1_v2 | VM Size |
+|vmOsVersion| string | 2016-Datacenter | OS Version - Image SKU |
+|vmInitscriptUrl| string | https://raw.githubusercontent.com/flecoqui/TestCppCustomMetricPrometheusClient/master/101-aks-vnet-vm/install-tsroute.ps1 | The url to the installation script |
+|vmInitScriptFileName| string | install-tsroute.ps1 | The Name of the installation script |
+
+
+        "vmAdminUsername": 
+       "vmAdminPassword":
+          "vmDnsLabelPrefix": 
+          "vmSize":
+          "vmOsVersion": 
+          "vmInitscriptUrl": 
+          "vmInitScriptFileName": 
+
+        "aksResourceName": 
+        "aksDnsPrefix": 
+        "aksOsDiskSizeGB": 
+        "aksAgentCount": 
+        "aksAgentVMSize":
+        "aksServicePrincipalClientId": 
+        "aksServicePrincipalClientSecret":
+        "aksKubernetesVersion": 
+        "aksNetworkPlugin": 
+        "aksMaxPods": 
+        "aksEnableRBAC": 
+
+
+6. With the following Azure CLI command create the resource group for the Azure Kubernetes Cluster:</p>
+**Azure CLI 2.0:** az group create -n "ResourceGroupName" -l "Location"</p>
+
+     For instance:
+
+
+
+            C:\git\me\TestCppCustomMetricPrometheusClient\101-aks-vnet-vm> az group deployment create -g aksvnetvmrg -n aksvnetvmtest --template-file azuredeploy.json --parameter @azuredeploy.parameters.json --verbose -o json
+
+
+
+Note:</p>
+If after your tests, you want to remove the AKS Cluster and the Virtual Machine from your Azure Subscription run the following command:</p>
+**Azure CLI 2.0:** az group delete -n "ResourceGroupName"</p>
+
+     For instance:
+
+            az group delete -n aksvnetvmrg
+
+
+##### CREATING ONLY THE KUBERNETES CLUSTER WITHOUT VIRTUAL MACHINE TO STREAM CONTENT TOWARDS THE CLUSTER
 
 1. With the following Azure CLI command create the Azure Kubernetes Cluster:</p>
 **Azure CLI 2.0:** az aks create --resource-group "ResourceGroupName" --name "AKSClusterName" --node-count 1 --service-principal "SPAppID" --client-secret "SPPassword" --generate-ssh-keys </p>
@@ -168,7 +244,7 @@ az group delete -n aksvnetvmrg
 
         az aks create --resource-group acrrg --name netcoreakscluster --node-count 1 --service-principal d604dc61-d8c0-41e2-803e-443415a62825   --client-secret 097df367-7472-4c23-96e1-9722e1d8270a --generate-ssh-keys
 
- 
+
 2. After few minutes, the Cluster is deployed. To connect to the cluster from your local computer, you use the Kubernetes Command Line Client. Use the following Azure CLI command to install the Kubernetes Command Line Client:
 **Azure CLI 2.0:** az aks install-cli </p>
 
