@@ -39,10 +39,10 @@
             "value": "Standard_D2_v2"
         },
         "aksServicePrincipalClientId": {
-            "value": "bd28006a-272c-43a5-bd80-5bafc49e9144"
+            "value": "GEN GUID"
         },
         "aksServicePrincipalClientSecret": {
-            "value": "a27ed361-59db-46d5-b91f-fc6c5c45e43e"
+            "value": "GEN GUID"
         },
         "aksKubernetesVersion": {
             "value": "1.10.12"

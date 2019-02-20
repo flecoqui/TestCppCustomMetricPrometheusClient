@@ -453,12 +453,12 @@ The image is built using the DockerFile below:
 Now the PCRGauge image is avaiable on your Azure Container Registry. You can deploy this image on your AKS Cluster.
 
 
-1. Use the following kubectl command line to deploy the PCRGauge image on your AKS Cluster inthe monitoring namespace.
+1. Use the following kubectl command line to deploy the PCRGauge image on your AKS Cluster inthe monitoring namespace. Before you need to replace the field "YourACRName" in the file pcrgauge.aks.yaml with the name of your Azure Container Registry.
 
 
             C:\git\me\TestCppCustomMetricPrometheusClient\PCRGauge> kubectl apply -f pcrgauge.aks.yaml -n monitoring
 
-The yaml file used to deploy the solution on AKS:
+The yaml file used to deploy the solution on AKS, you need to replace the field "YourACRName" with the name of your Azure Container Registry:
 
 
             apiVersion: v1
@@ -497,7 +497,7 @@ The yaml file used to deploy the solution on AKS:
                 spec:
                 containers:
                 - name: pcrgauge
-                    image: testacreu2.azurecr.io/pcrgauge:v1
+                    image: <YourACRName>.azurecr.io/pcrgauge:v1
                     command: ["./PCRGauge","--prometheusport", "8080", "--tsport", "127.0.0.1:1234" ]
                     imagePullPolicy: IfNotPresent
                     ports:

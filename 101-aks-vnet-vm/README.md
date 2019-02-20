@@ -17,7 +17,7 @@ Below the architecture when the solution is deployed using Kubenet AKS network p
 
 <img src="Docs/architecture2.png" width="900">
 
-You'll find further information about the usage of this ARM Templete [here](https://github.com/flecoqui/TestCppCustomMetricPrometheusClient).
+You'll find further information about the usage of this ARM Template [here](https://github.com/flecoqui/TestCppCustomMetricPrometheusClient).
 
 `Tags: AKS, Kubernetes, Advanced Networking`
 
@@ -91,4 +91,6 @@ If after your tests, you want to remove the AKS Cluster and the Virtual Machine 
 
      For instance:
 
+
             az group delete -n aksvnetvmrg
+
