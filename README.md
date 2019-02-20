@@ -1,13 +1,18 @@
-# Custom Prometheus Metric PCR Gauge
-This sample application implements a sample PCR Gauge based on a Custom Prometheus Metric running in Container in Azure Kubernetes Service.
-You'll find below all the steps required to test this component.
+# Custom Prometheus Metrics PCR Gauge
+This github repository contains:
+- [A Sample application](https://github.com/flecoqui/TestCppCustomMetricPrometheusClient/tree/master/PCRGauge) which implements a  PCR Gauge based on a Custom Prometheus Metric running in Container in Azure Kubernetes Service;
+- [An ARM Template](https://github.com/flecoqui/TestCppCustomMetricPrometheusClient/tree/master/101-aks-vnet-vm) to deploy in the same Azure Resource Group a Virtual Machine used to stream the MPEG2-TS Stream and an AKS Cluster running the prometeus components and the PCR Gauge container which will consume the MPEG2-TS stream to extract the PCR.
+
+Below the architecture when the solution is deployed using Azure AKS network plugin:
 
 <img src="Docs/architecture1.png" width="800">
 
-
+Below the architecture when the solution is deployed using Kubenet AKS network plugin:
 
 <img src="Docs/architecture2.png" width="800">
 
+
+Below the different steps to deploy this solution.
 
 ## Getting the Azure Subscription 
 First you need an Azure subscription.
