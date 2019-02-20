@@ -27,11 +27,13 @@ Once, Azure CLI v2 is installed on your machine, you can check the version of Az
 1. Open a command shell window on your machine  
 
 
-        C:\users\me>  
+            C:\users\me>  
+
 
 2. Launch the following command to get the current version of Azure CLI:
 
-        C:\users\me> az --version 
+
+            C:\users\me> az --version 
 
 
 
