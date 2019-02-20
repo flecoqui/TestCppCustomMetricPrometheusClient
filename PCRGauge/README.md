@@ -139,6 +139,14 @@ For instance:
 Now you can create the Kubernetes Cluster in Azure. </p>
 
 
+az group create -n aksvnetvmrg -l eastus2
+
+az group deployment create -g aksvnetvmrg -n aksvnetvmtest --template-file azuredeploy.json --parameter @azuredeploy.parameters.json --verbose -o json
+
+az group delete -n aksvnetvmrg
+
+
+
 1. With the following Azure CLI command create the Azure Kubernetes Cluster:</p>
 **Azure CLI 2.0:** az aks create --resource-group "ResourceGroupName" --name "AKSClusterName" --node-count 1 --service-principal "SPAppID" --client-secret "SPPassword" --generate-ssh-keys </p>
 
@@ -157,7 +165,7 @@ Now you can create the Kubernetes Cluster in Azure. </p>
 
      For instance:
 
-        az aks get-credentials --resource-group acrrg --name netcoreakscluster
+        az aks get-credentials --resource-group acrrg --name netcoreakscluster --overwrite-existing
 
 
 4. Check the connection from the Kubernetes Command Line Client with the following command:
@@ -173,8 +181,30 @@ Now you can create the Kubernetes Cluster in Azure. </p>
 
 ## Deploying a Virtual Machine connected with the AKS Cluster through a VNET
 
-## Deploying Prometeus on the AKS Cluster 
 
+
+
+
+
+
+
+
+
+## Deploying Prometeus on the AKS Cluster 
+kubectl -n kube-system create serviceaccount tiller
+kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
+helm init --service-account tiller
+
+helm install stable/prometheus-operator    --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false --name=prometheus-operator --namespace=monitoring
+
+helm upgrade prometheus-operator stable/prometheus-operator --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false
+
+helm get values prometheus-operator
+
+Delete 2 steps:
+
+helm delete --purge prometheus-operator
+kubectl delete crd alertmanagers.monitoring.coreos.com prometheuses.monitoring.coreos.com prometheusrules.monitoring.coreos.com servicemonitors.monitoring.coreos.com
 
 ## Using the Application
 
@@ -338,6 +368,17 @@ The yaml file used to deploy the solution on AKS:
 Use the following command:
 
         kubectl get pods -n monitoring
+
+
+        kubectl get pods -n monitoring -o wide
+NAME                                                      READY     STATUS    RESTARTS   AGE       IP            NODE
+alertmanager-prometheus-operator-alertmanager-0           2/2       Running   0          1h        10.244.0.13   aks-agentpool-32014029-0
+pcrgauge-c58fdc84b-2jgph                                  1/1       Running   0          4m        10.244.0.15   aks-agentpool-32014029-0
+prometheus-operator-grafana-7869d7b74-dbcpp               3/3       Running   0          1h        10.244.0.12   aks-agentpool-32014029-0
+prometheus-operator-kube-state-metrics-5fc876d8f6-wfwfz   1/1       Running   0          1h        10.244.0.10   aks-agentpool-32014029-0
+prometheus-operator-operator-69d6cd685f-c6gwp             1/1       Running   0          1h        10.244.0.11   aks-agentpool-32014029-0
+prometheus-operator-prometheus-node-exporter-k6pw6        1/1       Running   0          1h        10.201.1.4    aks-agentpool-32014029-0
+prometheus-prometheus-operator-prometheus-0               3/3       Running   1          1h        10.244.0.14   aks-agentpool-32014029-0
 
 ### Checking if the Custom Metric is visible with kubectl
 
