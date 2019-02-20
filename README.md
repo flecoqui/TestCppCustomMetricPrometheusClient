@@ -577,7 +577,7 @@ With this kubectl command line, you can get the IP address of the PCRGauge pod.
 
 <img src="Docs/servicecheck.png" width="600">
 
-9. From the Virtual Machine using the browser, you can retrieve the counter information from the PCRGauge running in AKS. You need to open the following url:  http://<IPAddress of PCRGauge pod>:8080/metrics
+9. From the Virtual Machine using the browser, you can retrieve the counter information from the PCRGauge running in AKS. You need to open the following url:  http://"IPAddress of PCRGauge pod":8080/metrics
 
 <img src="Docs/metricsfromvm.png" width="800">
 
