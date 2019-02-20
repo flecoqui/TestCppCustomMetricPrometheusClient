@@ -5,11 +5,11 @@ This github repository contains:
 
 Below the architecture when the solution is deployed using Azure AKS network plugin:
 
-<img src="Docs/architecture1.png" width="800">
+<img src="Docs/architecture1.png" width="900">
 
 Below the architecture when the solution is deployed using Kubenet AKS network plugin:
 
-<img src="Docs/architecture2.png" width="800">
+<img src="Docs/architecture2.png" width="900">
 
 
 Below the different steps to deploy this solution.
@@ -178,9 +178,9 @@ Now you can create the Kubernetes Cluster in Azure. </p>
             C:\git\me\TestCppCustomMetricPrometheusClient\101-aks-vnet-vm> az group create -n aksvnetvmrg -l eastus2
 
 
-5. kqsjlkdlskdj
+5. Edit the file azuredeploy.parameters.json to define the parameters required to create the virtual machine which will stream a MPEG2-TS Stream and the AKS Cluster. 
 
-
+Below the information related to those parameters:
 
 | Attribute name | value type | default value | Description | 
 | :--- | :--- | :--- |  :--- | 
@@ -191,39 +191,46 @@ Now you can create the Kubernetes Cluster in Azure. </p>
 |vmOsVersion| string | 2016-Datacenter | OS Version - Image SKU |
 |vmInitscriptUrl| string | https://raw.githubusercontent.com/flecoqui/TestCppCustomMetricPrometheusClient/master/101-aks-vnet-vm/install-tsroute.ps1 | The url to the installation script |
 |vmInitScriptFileName| string | install-tsroute.ps1 | The Name of the installation script |
+|aksResourceName| string | null | The name of the Managed Cluster resource |
+|aksDnsPrefix| string | null| Optional DNS prefix to use with hosted Kubernetes API server FQDN. |
+|aksOsDiskSizeGB| int | 0 | Disk size (in GB) to provision for each of the agent pool nodes. This value ranges from 0 to 1023. Specifying 0 will apply the default disk size for that agentVMSize. |
+|aksAgentCount| int | 3 | The number of agent nodes for the cluster. Production workloads have a recommended minimum of 3. |
+|aksAgentVMSize| string | Standard_D2_v2 | The size of the AKS Virtual Machines. |
+|aksServicePrincipalClientId| securestring | null | Client ID or App ID (used by cloudprovider) |
+|aksServicePrincipalClientSecret| securestring | null | The Service Principal Client Secret. |
+|aksKubernetesVersion| string | 1.10.12 | The version of Kubernetes. |
+|aksNetworkPlugin| string | azure | Network plugin used for building Kubernetes network: azure or kubenet |
+|aksMaxPods| int | 30 | Maximum number of pods that can run on a node. |
+|aksEnableRBAC| bool | true | boolean flag to turn on and off of RBAC |
 
 
-        "vmAdminUsername": 
-       "vmAdminPassword":
-          "vmDnsLabelPrefix": 
-          "vmSize":
-          "vmOsVersion": 
-          "vmInitscriptUrl": 
-          "vmInitScriptFileName": 
-
-        "aksResourceName": 
-        "aksDnsPrefix": 
-        "aksOsDiskSizeGB": 
-        "aksAgentCount": 
-        "aksAgentVMSize":
-        "aksServicePrincipalClientId": 
-        "aksServicePrincipalClientSecret":
-        "aksKubernetesVersion": 
-        "aksNetworkPlugin": 
-        "aksMaxPods": 
-        "aksEnableRBAC": 
-
-
-6. With the following Azure CLI command create the resource group for the Azure Kubernetes Cluster:</p>
-**Azure CLI 2.0:** az group create -n "ResourceGroupName" -l "Location"</p>
+6. Once the parameter file is ready, with the following Azure CLI command you'll deploy the virtual machine and the AKS Cluster on your resource group :</p>
+**Azure CLI 2.0:** az group deployment create -g "ResourceGroupName" -n "DeploymentName" --template-file azuredeploy.json --parameter @azuredeploy.parameters.json --verbose -o json</p>
 
      For instance:
-
 
 
             C:\git\me\TestCppCustomMetricPrometheusClient\101-aks-vnet-vm> az group deployment create -g aksvnetvmrg -n aksvnetvmtest --template-file azuredeploy.json --parameter @azuredeploy.parameters.json --verbose -o json
 
 
+7. Connect the Kubernetes Command Line Client to your Cluster in Azure using the following Azure CLI command:
+**Azure CLI 2.0:** az aks get-credentials --resource-group "ResourceGroupName" --name "AKSClusterName" --overwrite-existing</p>
+
+     For instance:
+
+        az aks get-credentials --resource-group aksvnetvmrg --name akstest --overwrite-existing
+
+
+8. Check the connection from the Kubernetes Command Line Client with the following command:
+**kubectl:** kubectl get nodes
+
+     The commmand will return information about the Kuberentes nodes.
+     For instance:
+
+        NAME                       STATUS    ROLES     AGE       VERSION
+        aks-nodepool1-38201324-0   Ready     agent     16m       v1.10.12
+
+     You are now connected to your cluster from your local machine.
 
 Note:</p>
 If after your tests, you want to remove the AKS Cluster and the Virtual Machine from your Azure Subscription run the following command:</p>
@@ -245,11 +252,7 @@ If after your tests, you want to remove the AKS Cluster and the Virtual Machine 
         az aks create --resource-group acrrg --name netcoreakscluster --node-count 1 --service-principal d604dc61-d8c0-41e2-803e-443415a62825   --client-secret 097df367-7472-4c23-96e1-9722e1d8270a --generate-ssh-keys
 
 
-2. After few minutes, the Cluster is deployed. To connect to the cluster from your local computer, you use the Kubernetes Command Line Client. Use the following Azure CLI command to install the Kubernetes Command Line Client:
-**Azure CLI 2.0:** az aks install-cli </p>
-
-
-3. Connect the Kubernetes Command Line Client to your Cluster in Azure using the following Azure CLI command:
+2. Connect the Kubernetes Command Line Client to your Cluster in Azure using the following Azure CLI command:
 **Azure CLI 2.0:** az aks get-credentials --resource-group "ResourceGroupName" --name "AKSClusterName" </p>
 
      For instance:
@@ -257,45 +260,72 @@ If after your tests, you want to remove the AKS Cluster and the Virtual Machine 
         az aks get-credentials --resource-group acrrg --name netcoreakscluster --overwrite-existing
 
 
-4. Check the connection from the Kubernetes Command Line Client with the following command:
+3. Check the connection from the Kubernetes Command Line Client with the following command:
 **kubectl:** kubectl get nodes
 
      The commmand will return information about the Kuberentes nodes.
      For instance:
 
         NAME                       STATUS    ROLES     AGE       VERSION
-        aks-nodepool1-38201324-0   Ready     agent     16m       v1.9.11
+        aks-nodepool1-38201324-0   Ready     agent     16m       v1.10.12
 
      You are now connected to your cluster from your local machine.
 
-## Deploying a Virtual Machine connected with the AKS Cluster through a VNET
-
-
-
-
-
-
-
-
-
 
 ## Deploying Prometeus on the AKS Cluster 
-kubectl -n kube-system create serviceaccount tiller
-kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
-helm init --service-account tiller
+Your AKS Cluster is now deployed, you can deploy the Prometheus component on this cluster using HELM.
 
-helm install stable/prometheus-operator    --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false --name=prometheus-operator --namespace=monitoring
 
-helm upgrade prometheus-operator stable/prometheus-operator --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false
 
-helm get values prometheus-operator
+1. With the following kubectl command line, you'll create the tiller service account:</p>
 
-Delete 2 steps:
 
-helm delete --purge prometheus-operator
-kubectl delete crd alertmanagers.monitoring.coreos.com prometheuses.monitoring.coreos.com prometheusrules.monitoring.coreos.com servicemonitors.monitoring.coreos.com
+            kubectl -n kube-system create serviceaccount tiller
+
+
+2. With the following kubectl command line, you'll create a cluster role associated with tiller:</p>
+
+
+            kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
+
+
+3. With the following helm command line, you'll initialize helm on your cluster:</p>
+
+
+            helm init --service-account tiller
+
+
+4. With the following helm command line, you'll deploy the prometheus components on your cluster in the namespace "monitoring" for release prometheus-operator:</p>
+
+
+            helm install stable/prometheus-operator  --name=prometheus-operator --namespace=monitoring
+
+
+5. With the following helm command line, you'll set value prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues to false to allow the prometheus component to discover custom metric components like PCR Gauge:</p>
+
+
+            helm upgrade prometheus-operator stable/prometheus-operator --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false
+
+
+5. With the following helm command line, you'll check if the new value is taken into account:</p>
+
+
+            helm get values prometheus-operator
+
+
+Note:
+You can remove the prometheus components from your cluster using the following commands:
+
+            helm delete --purge prometheus-operator
+
+
+            kubectl delete crd alertmanagers.monitoring.coreos.com prometheuses.monitoring.coreos.com prometheusrules.monitoring.coreos.com servicemonitors.monitoring.coreos.com
+
 
 ## Using the Application
+Your infrastructure is now ready, the virtual machine and the AKS Cluster. You can now build and deploy the PCR Gauge image on your servers.
+
+Below the information related to the usage of PCR Gauge
 
 PCR Gauge Custom Prometheus Client:
 Syntax:
@@ -309,19 +339,26 @@ Launch PCRGauge to receive the http request on port 8080 and receiving the TS St
 
         PCRGauge --prometheusport 8080 --tsport 239.0.0.1:1234 
 
-Launch PCRGauge to receive the http request on port 8080 and receiving the TS Stream on unicast address 127.0.0.1 and UDP port 1234
+Launch PCRGauge to receive the http request on port 8080 and receiving the TS Stream on unicast address 127.0.0.1 and UDP port 1234, and receiving the TS Stream on multicast adress 239.0.0.1:2501
 
-        PCRGauge --prometheusport 8080 --tsport 127.0.0.1:1234 
-
+        PCRGauge --prometheusport 8080 --tsport 127.0.0.1:1234,239.0.0.1:2501 
 
 
 ## Building the container image with Azure CLI
 
-az acr build --registry "ACRName"   --image pcrgauge:v1 .
+
+1. Change directory to the PCR Gauge folder   
+
+            C:\git\me\TestCppCustomMetricPrometheusClient\PCRGauge> 
+
+2. Run the following Azure CLI command to build the image:
+
+
+
+            C:\git\me\TestCppCustomMetricPrometheusClient\PCRGauge> az acr build --registry "ACRName"   --image pcrgauge:v1 .
 
 
 The image is built using the DockerFile below:
-
 
 
             # Get the GCC preinstalled image from Docker Hub
@@ -382,9 +419,13 @@ The image is built using the DockerFile below:
 
 
 ## Deploying the container image  with Kubectl
+Now the PCRGauge image is avaiable on your Azure Container Registry. You can deploy this image on your AKS Cluster.
 
-kubectl apply -f pcrgauge.aks.yaml -n monitoring
 
+1. Use the following kubectl command line to deploy the PCRGauge image on your AKS Cluster inthe monitoring namespace.
+
+
+            C:\git\me\TestCppCustomMetricPrometheusClient\PCRGauge> kubectl apply -f pcrgauge.aks.yaml -n monitoring
 
 The yaml file used to deploy the solution on AKS:
 
@@ -450,27 +491,72 @@ The yaml file used to deploy the solution on AKS:
             endpoints:
             - port: http
 
-## Checking the deployment of the  container image
+## Checking the deployment of the container image
 
 ### Checking if the pod is deployed with kubectl
 
-Use the following command:
-
-        kubectl get pods -n monitoring
+Use the following kubectl command line to check if the PCRGauge container is running :
 
 
-        kubectl get pods -n monitoring -o wide
-NAME                                                      READY     STATUS    RESTARTS   AGE       IP            NODE
-alertmanager-prometheus-operator-alertmanager-0           2/2       Running   0          1h        10.244.0.13   aks-agentpool-32014029-0
-pcrgauge-c58fdc84b-2jgph                                  1/1       Running   0          4m        10.244.0.15   aks-agentpool-32014029-0
-prometheus-operator-grafana-7869d7b74-dbcpp               3/3       Running   0          1h        10.244.0.12   aks-agentpool-32014029-0
-prometheus-operator-kube-state-metrics-5fc876d8f6-wfwfz   1/1       Running   0          1h        10.244.0.10   aks-agentpool-32014029-0
-prometheus-operator-operator-69d6cd685f-c6gwp             1/1       Running   0          1h        10.244.0.11   aks-agentpool-32014029-0
-prometheus-operator-prometheus-node-exporter-k6pw6        1/1       Running   0          1h        10.201.1.4    aks-agentpool-32014029-0
-prometheus-prometheus-operator-prometheus-0               3/3       Running   1          1h        10.244.0.14   aks-agentpool-32014029-0
+            kubectl get pods -n monitoring -o wide
+
+
+You should see pcrgauge in the list of pods running:  
+
+        NAME                                                      READY     STATUS    RESTARTS   AGE       IP            NODE
+        alertmanager-prometheus-operator-alertmanager-0           2/2       Running   0          1h        10.244.1.13   aks-agentpool-32014029-0
+        pcrgauge-c58fdc84b-2jgph                                  1/1       Running   0          4m        10.244.1.34   aks-agentpool-32014029-0
+        prometheus-operator-grafana-7869d7b74-dbcpp               3/3       Running   0          1h        10.244.1.12   aks-agentpool-32014029-0
+        prometheus-operator-kube-state-metrics-5fc876d8f6-wfwfz   1/1       Running   0          1h        10.244.1.10   aks-agentpool-32014029-0
+        prometheus-operator-operator-69d6cd685f-c6gwp             1/1       Running   0          1h        10.244.1.11   aks-agentpool-32014029-0
+        prometheus-operator-prometheus-node-exporter-k6pw6        1/1       Running   0          1h        10.201.1.4    aks-agentpool-32014029-0
+        prometheus-prometheus-operator-prometheus-0               3/3       Running   1          1h        10.244.1.14   aks-agentpool-32014029-0
+
+With this kubectl command line, you can get the IP address of the PCRGauge pod. 
+
+### Updating TSRoute configuration on the virtual machine to stream the MPEG2-TS stream towards the ip address associated with the PCR Gauge pod
+
+1. Open an RDP session with the Virtual Machine running in the same resource group. By default this Windows Virtual Machine has been installed in TSRoute which will be used to stream a MPEG2-TS stream towards the ip address associated with the PCR Gauge.
+
+2. Run services.msc to display the list of services running in the virtual machine
+
+3. Stop the service MPEG2-TS Router
+
+<img src="Docs/servicestop.png" width="600">
+
+
+4. Open the file tsstream.xml under  C:\tsroute\ReleasesWithTSFiles the service MPEG2-TS Router
+
+<img src="Docs/tsstreamopen.png" width="600">
+
+
+5. Edit the file tsstream.xml and update the field UdpIpAddress with the IP address of your PCR Gauge container.
+
+<img src="Docs/tsstreamedit.png" width="600">
+
+6. Save the file tsstream.xml .
+
+<img src="Docs/tsstreamsave.png" width="600">
+
+6. Start the service MPEG2-TS Router
+
+<img src="Docs/servicestart.png" width="600">
+
+
+7. Start the service MPEG2-TS Router
+
+<img src="Docs/servicestart.png" width="600">
+
+8. with Task Manager (taskmgr.exe) check that there is a network activity around 2 Mb/s
+
+<img src="Docs/servicecheck.png" width="600">
+
+
 
 ### Checking if the Custom Metric is visible with kubectl
-
+Now your PCRGauge should receive the MPEG2-TS stream and retrieve the PCR Time stamps. 
+We 
+ 
 Use the following command:
 
     kubectl port-forward -n monitoring prometheus-prometheus-operator-prometheus-0 9090
