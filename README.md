@@ -2,6 +2,10 @@
 This sample application implements a sample PCR Gauge based on a Custom Prometheus Metric running in Container in Azure Kubernetes Service.
 You'll find below all the steps required to test this component.
 
+<img src="Docs/architecture1.png" width="600">
+
+<img src="Docs/architecture2.png" width="600">
+
 
 ## Getting the Azure Subscription 
 First you need an Azure subscription.
