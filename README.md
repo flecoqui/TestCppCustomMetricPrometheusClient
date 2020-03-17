@@ -205,12 +205,12 @@ Below the information related to those parameters:
 
 
 6. Once the parameter file is ready, with the following Azure CLI command you'll deploy the virtual machine and the AKS Cluster on your resource group :</p>
-**Azure CLI 2.0:** az group deployment create -g "ResourceGroupName" -n "DeploymentName" --template-file azuredeploy.json --parameter @azuredeploy.parameters.json --verbose -o json</p>
+**Azure CLI 2.0:** az  deployment group create -g "ResourceGroupName" -n "DeploymentName" --template-file azuredeploy.json --parameter @azuredeploy.parameters.json --verbose -o json</p>
 
      For instance:
 
 
-            C:\git\me\TestCppCustomMetricPrometheusClient\101-aks-vnet-vm> az group deployment create -g aksvnetvmrg -n aksvnetvmtest --template-file azuredeploy.json --parameter @azuredeploy.parameters.json --verbose -o json
+            C:\git\me\TestCppCustomMetricPrometheusClient\101-aks-vnet-vm> az  deployment group create -g aksvnetvmrg -n aksvnetvmtest --template-file azuredeploy.json --parameter @azuredeploy.parameters.json --verbose -o json
 
 
 7. Connect the Kubernetes Command Line Client to your Cluster in Azure using the following Azure CLI command:

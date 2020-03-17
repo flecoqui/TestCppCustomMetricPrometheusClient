@@ -39,13 +39,13 @@
             "value": "Standard_D2_v2"
         },
         "aksServicePrincipalClientId": {
-            "value": "GEN GUID"
+            "value": "APP GUID"
         },
         "aksServicePrincipalClientSecret": {
-            "value": "GEN GUID"
+            "value": "PASSWORD GUID"
         },
         "aksKubernetesVersion": {
-            "value": "1.10.12"
+            "value": "1.15.7"
         },
         "aksNetworkPlugin": {
             "value": "azure"
