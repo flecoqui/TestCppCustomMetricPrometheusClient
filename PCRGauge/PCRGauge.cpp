@@ -40,6 +40,8 @@
 
 #include <prometheus/exposer.h>
 #include <prometheus/registry.h>
+#include <prometheus/counter.h>
+#include <prometheus/gauge.h>
 #define ucout std::wcout
 #define SOCKADDR_IN struct sockaddr_in
 #define SOCKET int
